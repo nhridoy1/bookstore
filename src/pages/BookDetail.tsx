@@ -37,11 +37,12 @@ export default function BookDetail() {
       const { error } = await supabase.from("book_borrows").insert({
         user_id: user.id,
         book_id: book.id,
+        status: "pending",
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Book borrowed!", description: "Due in 14 days." });
+      toast({ title: "Borrow request sent!", description: "Waiting for admin/publisher approval." });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -84,7 +85,7 @@ export default function BookDetail() {
                 )}
                 {book.is_borrowable && (
                   <Button size="lg" variant="outline" onClick={() => borrowMutation.mutate()} disabled={borrowMutation.isPending}>
-                    <BookOpen className="mr-2 h-5 w-5" /> Borrow
+                    <BookOpen className="mr-2 h-5 w-5" /> Request Borrow
                   </Button>
                 )}
               </div>

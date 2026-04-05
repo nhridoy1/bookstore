@@ -16,8 +16,10 @@ export type Database = {
     Tables: {
       book_borrows: {
         Row: {
+          approved_at: string | null
           book_id: string
           borrow_date: string
+          borrow_days: number | null
           created_at: string
           due_date: string
           id: string
@@ -27,8 +29,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approved_at?: string | null
           book_id: string
           borrow_date?: string
+          borrow_days?: number | null
           created_at?: string
           due_date?: string
           id?: string
@@ -38,8 +42,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approved_at?: string | null
           book_id?: string
           borrow_date?: string
+          borrow_days?: number | null
           created_at?: string
           due_date?: string
           id?: string

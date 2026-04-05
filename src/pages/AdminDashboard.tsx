@@ -453,6 +453,8 @@ function AdminOrdersTab() {
 function AdminBorrowsTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [approveId, setApproveId] = useState<string | null>(null);
+  const [borrowDays, setBorrowDays] = useState("14");
 
   const { data: borrows = [] } = useQuery({
     queryKey: ["admin-borrows"],
@@ -466,6 +468,31 @@ function AdminBorrowsTab() {
     },
   });
 
+  const approveBorrow = async (id: string) => {
+    const now = new Date();
+    const days = parseInt(borrowDays) || 14;
+    const dueDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    const { error } = await supabase.from("book_borrows").update({
+      status: "borrowed",
+      borrow_date: now.toISOString(),
+      due_date: dueDate.toISOString(),
+      approved_at: now.toISOString(),
+      borrow_days: days,
+    }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["admin-borrows"] });
+    toast({ title: `Borrow approved for ${days} days` });
+    setApproveId(null);
+    setBorrowDays("14");
+  };
+
+  const rejectBorrow = async (id: string) => {
+    const { error } = await supabase.from("book_borrows").update({ status: "rejected" }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["admin-borrows"] });
+    toast({ title: "Borrow request rejected" });
+  };
+
   const updateBorrow = async (id: string, status: string) => {
     const updates: any = { status };
     if (status === "returned") updates.return_date = new Date().toISOString();
@@ -473,6 +500,14 @@ function AdminBorrowsTab() {
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     queryClient.invalidateQueries({ queryKey: ["admin-borrows"] });
     toast({ title: `Borrow marked as ${status}` });
+  };
+
+  const statusColor = (s: string) => {
+    if (s === "returned") return "secondary" as const;
+    if (s === "overdue") return "destructive" as const;
+    if (s === "rejected") return "destructive" as const;
+    if (s === "pending") return "outline" as const;
+    return "default" as const;
   };
 
   return (
@@ -484,7 +519,7 @@ function AdminBorrowsTab() {
             <TableRow>
               <TableHead>Book</TableHead>
               <TableHead>Borrower</TableHead>
-              <TableHead>Borrow Date</TableHead>
+              <TableHead>Requested</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -495,17 +530,41 @@ function AdminBorrowsTab() {
               <TableRow key={b.id}>
                 <TableCell><p className="font-medium">{b.books?.title}</p><p className="text-xs text-muted-foreground">{b.books?.author}</p></TableCell>
                 <TableCell>{(b.profiles as any)?.display_name || "Unknown"}</TableCell>
-                <TableCell className="text-sm">{format(new Date(b.borrow_date), "MMM d, yyyy")}</TableCell>
-                <TableCell className="text-sm">{format(new Date(b.due_date), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm">{format(new Date(b.created_at), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm">{b.status === "pending" ? "—" : format(new Date(b.due_date), "MMM d, yyyy")}</TableCell>
                 <TableCell>
-                  <Badge variant={b.status === "returned" ? "secondary" : b.status === "overdue" ? "destructive" : "default"}>{b.status}</Badge>
+                  <Badge variant={statusColor(b.status)}>{b.status}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  {b.status !== "returned" && (
-                    <Button size="sm" variant="outline" onClick={() => updateBorrow(b.id, "returned")}>Return</Button>
+                  {b.status === "pending" && (
+                    <div className="flex items-center gap-2 justify-end">
+                      {approveId === b.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={borrowDays}
+                            onChange={(e) => setBorrowDays(e.target.value)}
+                            className="w-20 h-8 text-xs"
+                            placeholder="Days"
+                          />
+                          <span className="text-xs text-muted-foreground">days</span>
+                          <Button size="sm" onClick={() => approveBorrow(b.id)}>Confirm</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setApproveId(null)}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Button size="sm" onClick={() => setApproveId(b.id)}>Approve</Button>
+                          <Button size="sm" variant="destructive" onClick={() => rejectBorrow(b.id)}>Reject</Button>
+                        </>
+                      )}
+                    </div>
                   )}
                   {b.status === "borrowed" && (
-                    <Button size="sm" variant="ghost" className="text-destructive ml-1" onClick={() => updateBorrow(b.id, "overdue")}>Overdue</Button>
+                    <div className="flex gap-1 justify-end">
+                      <Button size="sm" variant="outline" onClick={() => updateBorrow(b.id, "returned")}>Return</Button>
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => updateBorrow(b.id, "overdue")}>Overdue</Button>
+                    </div>
                   )}
                 </TableCell>
               </TableRow>

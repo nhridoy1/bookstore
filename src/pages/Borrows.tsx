@@ -44,9 +44,17 @@ export default function Borrows() {
                   <div className="flex-1">
                     <h3 className="font-heading font-semibold">{borrow.books?.title}</h3>
                     <p className="text-sm text-muted-foreground">{borrow.books?.author}</p>
-                    <p className="text-xs text-muted-foreground">Due: {format(new Date(borrow.due_date), "MMM d, yyyy")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {borrow.status === "pending" ? "Awaiting approval" : 
+                       borrow.status === "rejected" ? "Request rejected" :
+                       `Due: ${format(new Date(borrow.due_date), "MMM d, yyyy")}`}
+                    </p>
                   </div>
-                  <Badge variant={borrow.status === "returned" ? "secondary" : borrow.status === "overdue" ? "destructive" : "default"}>
+                  <Badge variant={
+                    borrow.status === "returned" ? "secondary" : 
+                    borrow.status === "overdue" || borrow.status === "rejected" ? "destructive" : 
+                    borrow.status === "pending" ? "outline" : "default"
+                  }>
                     {borrow.status}
                   </Badge>
                 </CardContent>

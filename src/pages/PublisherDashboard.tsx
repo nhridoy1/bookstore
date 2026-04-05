@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users } from "lucide-react";
 import { format } from "date-fns";
 
 export default function PublisherDashboard() {
@@ -41,10 +41,12 @@ export default function PublisherDashboard() {
             <TabsTrigger value="my-books"><BookOpen className="mr-2 h-4 w-4" />My Books</TabsTrigger>
             <TabsTrigger value="categories"><FolderTree className="mr-2 h-4 w-4" />Categories</TabsTrigger>
             <TabsTrigger value="orders"><Package className="mr-2 h-4 w-4" />Orders</TabsTrigger>
+            <TabsTrigger value="borrows"><Users className="mr-2 h-4 w-4" />Borrows</TabsTrigger>
           </TabsList>
           <TabsContent value="my-books"><PublisherBooksTab /></TabsContent>
           <TabsContent value="categories"><PublisherCategoriesTab /></TabsContent>
           <TabsContent value="orders"><PublisherOrdersTab /></TabsContent>
+          <TabsContent value="borrows"><PublisherBorrowsTab /></TabsContent>
         </Tabs>
       </div>
       <Footer />
@@ -321,6 +323,108 @@ function PublisherOrdersTab() {
           </Card>
         ))}
         {orders.length === 0 && <p className="text-center text-muted-foreground py-8">No orders yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+function PublisherBorrowsTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [approveId, setApproveId] = useState<string | null>(null);
+  const [borrowDays, setBorrowDays] = useState("14");
+
+  const { data: borrows = [] } = useQuery({
+    queryKey: ["publisher-borrows"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_borrows")
+        .select("*, books(title, author), profiles(display_name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const approveBorrow = async (id: string) => {
+    const now = new Date();
+    const days = parseInt(borrowDays) || 14;
+    const dueDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    const { error } = await supabase.from("book_borrows").update({
+      status: "borrowed",
+      borrow_date: now.toISOString(),
+      due_date: dueDate.toISOString(),
+      approved_at: now.toISOString(),
+      borrow_days: days,
+    }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["publisher-borrows"] });
+    toast({ title: `Borrow approved for ${days} days` });
+    setApproveId(null);
+    setBorrowDays("14");
+  };
+
+  const rejectBorrow = async (id: string) => {
+    const { error } = await supabase.from("book_borrows").update({ status: "rejected" }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["publisher-borrows"] });
+    toast({ title: "Borrow request rejected" });
+  };
+
+  const updateBorrow = async (id: string, status: string) => {
+    const updates: any = { status };
+    if (status === "returned") updates.return_date = new Date().toISOString();
+    const { error } = await supabase.from("book_borrows").update(updates).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["publisher-borrows"] });
+    toast({ title: `Borrow marked as ${status}` });
+  };
+
+  return (
+    <div>
+      <h2 className="font-heading text-xl font-semibold mb-4">Manage Borrows ({borrows.length})</h2>
+      <div className="space-y-3">
+        {borrows.map((b: any) => (
+          <Card key={b.id}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="font-semibold">{b.books?.title}</p>
+                  <p className="text-sm text-muted-foreground">{(b.profiles as any)?.display_name} · {format(new Date(b.created_at), "MMM d, yyyy")}</p>
+                </div>
+                <Badge variant={
+                  b.status === "returned" ? "secondary" : 
+                  b.status === "overdue" || b.status === "rejected" ? "destructive" : 
+                  b.status === "pending" ? "outline" : "default"
+                }>{b.status}</Badge>
+              </div>
+              {b.status === "pending" && (
+                <div className="flex items-center gap-2 mt-2">
+                  {approveId === b.id ? (
+                    <>
+                      <Input type="number" min="1" value={borrowDays} onChange={(e) => setBorrowDays(e.target.value)} className="w-20 h-8 text-xs" placeholder="Days" />
+                      <span className="text-xs text-muted-foreground">days</span>
+                      <Button size="sm" onClick={() => approveBorrow(b.id)}>Confirm</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setApproveId(null)}>Cancel</Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button size="sm" onClick={() => setApproveId(b.id)}>Approve</Button>
+                      <Button size="sm" variant="destructive" onClick={() => rejectBorrow(b.id)}>Reject</Button>
+                    </>
+                  )}
+                </div>
+              )}
+              {b.status === "borrowed" && (
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" variant="outline" onClick={() => updateBorrow(b.id, "returned")}>Return</Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => updateBorrow(b.id, "overdue")}>Overdue</Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+        {borrows.length === 0 && <p className="text-center text-muted-foreground py-8">No borrows yet.</p>}
       </div>
     </div>
   );

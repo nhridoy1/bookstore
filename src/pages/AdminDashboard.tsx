@@ -728,8 +728,15 @@ function AdminUsersTab() {
             <DialogHeader><DialogTitle className="font-heading">Assign Role to User</DialogTitle></DialogHeader>
             <form onSubmit={handleAssignRole} className="space-y-4">
               <div>
-                <Label>User Name or Email</Label>
-                <Input value={assignEmail} onChange={(e) => setAssignEmail(e.target.value)} required placeholder="Search by name or email..." />
+                <Label>Select User</Label>
+                <Select value={assignUserId} onValueChange={setAssignUserId}>
+                  <SelectTrigger><SelectValue placeholder="Choose a user..." /></SelectTrigger>
+                  <SelectContent>
+                    {users.map((u: any) => (
+                      <SelectItem key={u.user_id} value={u.user_id}>{u.display_name || "Unknown"}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Role</Label>

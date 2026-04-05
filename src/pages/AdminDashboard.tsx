@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog, UserPlus, CreditCard, Banknote } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog, UserPlus, CreditCard, Banknote, Upload, X, Image } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AdminDashboard() {
@@ -206,6 +206,11 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(book?.cover_image_url || "");
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [form, setForm] = useState({
     title: book?.title || "",
     author: book?.author || "",
@@ -216,19 +221,58 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
     category_id: book?.category_id || "",
     is_borrowable: book?.is_borrowable || false,
     is_featured: book?.is_featured || false,
-    cover_image_url: book?.cover_image_url || "",
   });
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 5MB allowed.", variant: "destructive" });
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => setDragOver(false), []);
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return imagePreview || null;
+    const ext = imageFile.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("book-covers").upload(fileName, imageFile);
+    if (error) throw new Error("Image upload failed: " + error.message);
+    const { data } = supabase.storage.from("book-covers").getPublicUrl(fileName);
+    return data.publicUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      ...form,
-      price: parseFloat(form.price),
-      stock_quantity: parseInt(form.stock_quantity),
-      category_id: form.category_id || null,
-      publisher_id: book?.publisher_id || user!.id,
-    };
+    setUploading(true);
     try {
+      const coverUrl = await uploadImage();
+      const payload = {
+        ...form,
+        price: parseFloat(form.price),
+        stock_quantity: parseInt(form.stock_quantity),
+        category_id: form.category_id || null,
+        publisher_id: book?.publisher_id || user!.id,
+        cover_image_url: coverUrl,
+      };
       if (book) {
         const { error } = await supabase.from("books").update(payload).eq("id", book.id);
         if (error) throw error;
@@ -242,6 +286,8 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
       onClose();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -255,7 +301,50 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
         <div><Label>Stock</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
       </div>
       <div><Label>ISBN</Label><Input value={form.isbn} onChange={(e) => setForm({ ...form, isbn: e.target.value })} /></div>
-      <div><Label>Cover Image URL</Label><Input value={form.cover_image_url} onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })} placeholder="https://..." /></div>
+      
+      {/* Image Upload */}
+      <div>
+        <Label>Cover Image</Label>
+        <div
+          className={`mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+            dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+          }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+          />
+          {imagePreview ? (
+            <div className="relative inline-block">
+              <img src={imagePreview} alt="Preview" className="h-32 w-auto rounded-md object-cover mx-auto" />
+              <button
+                type="button"
+                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
+                onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(""); }}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="py-4">
+              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Drag & drop an image or click to browse</p>
+              <p className="text-xs text-muted-foreground mt-1">Max 5MB • JPG, PNG, WebP</p>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div>
         <Label>Category</Label>
         <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
@@ -267,7 +356,7 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
         <div className="flex items-center gap-2"><Switch checked={form.is_borrowable} onCheckedChange={(v) => setForm({ ...form, is_borrowable: v })} /><Label>Borrowable</Label></div>
         <div className="flex items-center gap-2"><Switch checked={form.is_featured} onCheckedChange={(v) => setForm({ ...form, is_featured: v })} /><Label>Featured</Label></div>
       </div>
-      <Button type="submit" className="w-full">{book ? "Update Book" : "Add Book"}</Button>
+      <Button type="submit" className="w-full" disabled={uploading}>{uploading ? "Uploading..." : book ? "Update Book" : "Add Book"}</Button>
     </form>
   );
 }
@@ -581,7 +670,7 @@ function AdminUsersTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignEmail, setAssignEmail] = useState("");
+  const [assignUserId, setAssignUserId] = useState("");
   const [assignRole, setAssignRole] = useState<string>("publisher");
 
   const { data: users = [] } = useQuery({
@@ -605,19 +694,12 @@ function AdminUsersTab() {
 
   const handleAssignRole = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!assignUserId) {
+      toast({ title: "Select a user", variant: "destructive" });
+      return;
+    }
     try {
-      // Find the user by display_name (which contains email for email signups)
-      const { data: profiles, error: pErr } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .or(`display_name.ilike.%${assignEmail}%`);
-      if (pErr) throw pErr;
-      if (!profiles || profiles.length === 0) {
-        toast({ title: "User not found", description: "No user matches that name/email.", variant: "destructive" });
-        return;
-      }
-      const targetUserId = profiles[0].user_id;
-      const { error } = await supabase.from("user_roles").insert({ user_id: targetUserId, role: assignRole as any });
+      const { error } = await supabase.from("user_roles").insert({ user_id: assignUserId, role: assignRole as any });
       if (error) {
         if (error.code === "23505") {
           toast({ title: "Already assigned", description: "User already has this role.", variant: "destructive" });
@@ -625,9 +707,10 @@ function AdminUsersTab() {
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast({ title: "Role assigned!", description: `${assignRole} role given to ${profiles[0].display_name}` });
+      const selectedUser = users.find((u: any) => u.user_id === assignUserId);
+      toast({ title: "Role assigned!", description: `${assignRole} role given to ${selectedUser?.display_name || "user"}` });
       setAssignOpen(false);
-      setAssignEmail("");
+      setAssignUserId("");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -645,8 +728,15 @@ function AdminUsersTab() {
             <DialogHeader><DialogTitle className="font-heading">Assign Role to User</DialogTitle></DialogHeader>
             <form onSubmit={handleAssignRole} className="space-y-4">
               <div>
-                <Label>User Name or Email</Label>
-                <Input value={assignEmail} onChange={(e) => setAssignEmail(e.target.value)} required placeholder="Search by name or email..." />
+                <Label>Select User</Label>
+                <Select value={assignUserId} onValueChange={setAssignUserId}>
+                  <SelectTrigger><SelectValue placeholder="Choose a user..." /></SelectTrigger>
+                  <SelectContent>
+                    {users.map((u: any) => (
+                      <SelectItem key={u.user_id} value={u.user_id}>{u.display_name || "Unknown"}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Role</Label>

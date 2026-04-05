@@ -118,6 +118,14 @@ export default function Profile() {
                 <Input id="avatarUrl" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." />
               </div>
               <div>
+                <Label htmlFor="profileAddress">Present Address</Label>
+                <Input id="profileAddress" value={profileAddress} onChange={(e) => setProfileAddress(e.target.value)} placeholder="123 Main St, City" />
+              </div>
+              <div>
+                <Label htmlFor="profileCountry">Country</Label>
+                <Input id="profileCountry" value={profileCountry} onChange={(e) => setProfileCountry(e.target.value)} placeholder="Bangladesh" />
+              </div>
+              <div>
                 <Label>Email</Label>
                 <Input value={user.email || ""} disabled className="bg-muted" />
                 <p className="text-xs text-muted-foreground mt-1">Email cannot be changed here</p>

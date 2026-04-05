@@ -17,6 +17,9 @@ export default function Books() {
   const categoryFilter = searchParams.get("category");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(categoryFilter || "all");
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [sortBy, setSortBy] = useState("newest");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],

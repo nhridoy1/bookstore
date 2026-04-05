@@ -1,0 +1,2 @@
+ALTER TABLE public.book_borrows DROP CONSTRAINT book_borrows_status_check;
+ALTER TABLE public.book_borrows ADD CONSTRAINT book_borrows_status_check CHECK (status = ANY (ARRAY['pending', 'borrowed', 'returned', 'overdue', 'rejected']));

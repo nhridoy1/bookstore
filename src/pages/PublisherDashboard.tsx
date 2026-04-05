@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users } from "lucide-react";
 import { format } from "date-fns";
 
 export default function PublisherDashboard() {

@@ -6,7 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Books from "./pages/Books";
 import BookDetail from "./pages/BookDetail";
 import Categories from "./pages/Categories";
@@ -30,7 +31,9 @@ const App = () => (
           <CartProvider>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth" element={<Login />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route path="/books" element={<Books />} />
               <Route path="/books/:id" element={<BookDetail />} />
               <Route path="/categories" element={<Categories />} />

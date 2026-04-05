@@ -46,7 +46,11 @@ export default function Borrows() {
                     <p className="text-sm text-muted-foreground">{borrow.books?.author}</p>
                     <p className="text-xs text-muted-foreground">Due: {format(new Date(borrow.due_date), "MMM d, yyyy")}</p>
                   </div>
-                  <Badge variant={borrow.status === "returned" ? "secondary" : borrow.status === "overdue" ? "destructive" : "default"}>
+                  <Badge variant={
+                    borrow.status === "returned" ? "secondary" : 
+                    borrow.status === "overdue" || borrow.status === "rejected" ? "destructive" : 
+                    borrow.status === "pending" ? "outline" : "default"
+                  }>
                     {borrow.status}
                   </Badge>
                 </CardContent>

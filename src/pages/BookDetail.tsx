@@ -85,7 +85,7 @@ export default function BookDetail() {
                 )}
                 {book.is_borrowable && (
                   <Button size="lg" variant="outline" onClick={() => borrowMutation.mutate()} disabled={borrowMutation.isPending}>
-                    <BookOpen className="mr-2 h-5 w-5" /> Borrow
+                    <BookOpen className="mr-2 h-5 w-5" /> Request Borrow
                   </Button>
                 )}
               </div>

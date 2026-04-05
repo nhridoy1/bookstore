@@ -71,6 +71,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       toast({ title: "Added to cart!" });
     },
+    onError: (err: Error) => {
+      console.error("Add to cart error:", err);
+      toast({ title: "Failed to add to cart", description: err.message, variant: "destructive" });
+    },
   });
 
   const removeMutation = useMutation({

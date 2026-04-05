@@ -670,7 +670,7 @@ function AdminUsersTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignEmail, setAssignEmail] = useState("");
+  const [assignUserId, setAssignUserId] = useState("");
   const [assignRole, setAssignRole] = useState<string>("publisher");
 
   const { data: users = [] } = useQuery({

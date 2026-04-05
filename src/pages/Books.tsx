@@ -116,7 +116,7 @@ export default function Books() {
           <p className="text-center text-muted-foreground py-16">No books found.</p>
         ) : (
           <div className="grid gap-6 grid-cols-2 md:grid-cols-4">
-            {books.map((book) => <BookCard key={book.id} {...book} category_name={(book.categories as any)?.name} />)}
+            {sortedBooks.map((book) => <BookCard key={book.id} {...book} category_name={(book.categories as any)?.name} />)}
           </div>
         )}
       </div>

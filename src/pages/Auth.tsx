@@ -94,7 +94,7 @@ export default function Auth() {
                 <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                   <div><Label htmlFor="signup-email">Email</Label><Input id="signup-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
                   <div><Label htmlFor="signup-password">Password</Label><Input id="signup-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></div>
-                  <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating account..." : "Sign Up"}</Button>
+                  <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating account..." : "Register"}</Button>
                 </form>
               </TabsContent>
             </Tabs>

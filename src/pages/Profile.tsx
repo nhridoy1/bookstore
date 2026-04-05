@@ -66,7 +66,7 @@ export default function Profile() {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ display_name: displayName, avatar_url: avatarUrl || null })
+        .update({ display_name: displayName, avatar_url: avatarUrl || null, address: profileAddress || null, country: profileCountry || null } as any)
         .eq("user_id", user.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["profile"] });

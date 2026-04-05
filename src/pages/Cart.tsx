@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingCart, CreditCard, Banknote } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,12 +17,22 @@ export default function Cart() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "stripe">("cod");
+  const [checkingOut, setCheckingOut] = useState(false);
+
   const handleCheckout = async () => {
     if (!user) { navigate("/auth"); return; }
+    setCheckingOut(true);
     try {
       const { data: order, error: orderError } = await supabase
         .from("orders")
-        .insert({ user_id: user.id, total_amount: totalPrice, status: "pending" })
+        .insert({
+          user_id: user.id,
+          total_amount: totalPrice,
+          status: "pending",
+          payment_method: paymentMethod,
+          payment_status: paymentMethod === "cod" ? "unpaid" : "unpaid",
+        })
         .select()
         .single();
       if (orderError) throw orderError;
@@ -34,11 +46,27 @@ export default function Cart() {
       const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
       if (itemsError) throw itemsError;
 
+      // Clear cart from DB
+      await supabase.from("cart_items").delete().eq("user_id", user.id);
       clearCart();
-      toast({ title: "Order placed!", description: "Your order has been created successfully." });
+
+      if (paymentMethod === "stripe") {
+        // Invoke Stripe checkout
+        const { data, error } = await supabase.functions.invoke("create-checkout", {
+          body: { order_id: order.id, amount: totalPrice },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          window.open(data.url, "_blank");
+        }
+      }
+
+      toast({ title: "Order placed!", description: paymentMethod === "cod" ? "Pay on delivery." : "Complete payment in the new tab." });
       navigate("/orders");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCheckingOut(false);
     }
   };
 
@@ -102,7 +130,28 @@ export default function Cart() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span>${totalPrice.toFixed(2)}</span></div>
                 <div className="border-t pt-4 flex justify-between font-heading font-bold text-lg"><span>Total</span><span className="text-primary">${totalPrice.toFixed(2)}</span></div>
-                <Button className="w-full" size="lg" onClick={handleCheckout}>Place Order</Button>
+
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium mb-3">Payment Method</p>
+                  <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "cod" | "stripe")} className="space-y-2">
+                    <div className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                      <RadioGroupItem value="cod" id="cod" />
+                      <Label htmlFor="cod" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Banknote className="h-4 w-4 text-green-600" /> Cash on Delivery
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                      <RadioGroupItem value="stripe" id="stripe" />
+                      <Label htmlFor="stripe" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <CreditCard className="h-4 w-4 text-blue-600" /> Pay Online (Stripe)
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <Button className="w-full" size="lg" onClick={handleCheckout} disabled={checkingOut}>
+                  {checkingOut ? "Processing..." : paymentMethod === "stripe" ? "Pay & Place Order" : "Place Order (COD)"}
+                </Button>
               </CardContent>
             </Card>
           </div>

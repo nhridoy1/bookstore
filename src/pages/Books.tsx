@@ -36,6 +36,7 @@ export default function Books() {
       let query = supabase.from("books").select("*, categories(name)").order("created_at", { ascending: false });
       if (selectedCategory && selectedCategory !== "all") query = query.eq("category_id", selectedCategory);
       if (search) query = query.or(`title.ilike.%${search}%,author.ilike.%${search}%`);
+      query = query.gte("price", priceRange[0]).lte("price", priceRange[1]);
       const { data, error } = await query;
       if (error) throw error;
       return data;

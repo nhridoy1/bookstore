@@ -46,7 +46,7 @@ export default function BookCard({ id, title, author, price, cover_image_url, is
           </div>
         </div>
         {user && stock_quantity > 0 && (
-          <Button size="sm" className="w-full mt-2" onClick={() => addToCart(id)}>
+          <Button size="sm" className="w-full mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(id); }}>
             <ShoppingCart className="mr-2 h-4 w-4" /> Add to Cart
           </Button>
         )}

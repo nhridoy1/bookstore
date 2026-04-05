@@ -694,19 +694,12 @@ function AdminUsersTab() {
 
   const handleAssignRole = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!assignUserId) {
+      toast({ title: "Select a user", variant: "destructive" });
+      return;
+    }
     try {
-      // Find the user by display_name (which contains email for email signups)
-      const { data: profiles, error: pErr } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .or(`display_name.ilike.%${assignEmail}%`);
-      if (pErr) throw pErr;
-      if (!profiles || profiles.length === 0) {
-        toast({ title: "User not found", description: "No user matches that name/email.", variant: "destructive" });
-        return;
-      }
-      const targetUserId = profiles[0].user_id;
-      const { error } = await supabase.from("user_roles").insert({ user_id: targetUserId, role: assignRole as any });
+      const { error } = await supabase.from("user_roles").insert({ user_id: assignUserId, role: assignRole as any });
       if (error) {
         if (error.code === "23505") {
           toast({ title: "Already assigned", description: "User already has this role.", variant: "destructive" });
@@ -714,9 +707,10 @@ function AdminUsersTab() {
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast({ title: "Role assigned!", description: `${assignRole} role given to ${profiles[0].display_name}` });
+      const selectedUser = users.find((u: any) => u.user_id === assignUserId);
+      toast({ title: "Role assigned!", description: `${assignRole} role given to ${selectedUser?.display_name || "user"}` });
       setAssignOpen(false);
-      setAssignEmail("");
+      setAssignUserId("");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }

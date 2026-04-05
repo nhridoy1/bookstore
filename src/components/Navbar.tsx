@@ -86,7 +86,7 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={() => navigate("/auth")} size="sm">Login</Button>
+            <Button onClick={() => navigate("/login")} size="sm">Login</Button>
           )}
         </div>
 

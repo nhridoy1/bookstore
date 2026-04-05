@@ -10,37 +10,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree } from "lucide-react";
 import { format } from "date-fns";
 
-export default function Dashboard() {
-  const { user, isAdmin, isPublisher, loading } = useAuth();
-
+export default function PublisherDashboard() {
+  const { user, isPublisher, isAdmin, loading } = useAuth();
   if (loading) return null;
-  if (!user || (!isAdmin && !isPublisher)) return <Navigate to="/" />;
+  if (!user || (!isPublisher && !isAdmin)) return <Navigate to="/" />;
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <div className="container mx-auto px-4 py-8 flex-1">
-        <h1 className="font-heading text-3xl font-bold mb-8">Dashboard</h1>
-        <Tabs defaultValue="books">
+        <div className="flex items-center gap-3 mb-8">
+          <BookOpen className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="font-heading text-3xl font-bold">Publisher Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Manage your books, categories, and view orders</p>
+          </div>
+        </div>
+        <Tabs defaultValue="my-books">
           <TabsList className="mb-6">
-            <TabsTrigger value="books"><BookOpen className="mr-2 h-4 w-4" />Books</TabsTrigger>
+            <TabsTrigger value="my-books"><BookOpen className="mr-2 h-4 w-4" />My Books</TabsTrigger>
             <TabsTrigger value="categories"><FolderTree className="mr-2 h-4 w-4" />Categories</TabsTrigger>
             <TabsTrigger value="orders"><Package className="mr-2 h-4 w-4" />Orders</TabsTrigger>
-            <TabsTrigger value="borrows"><Users className="mr-2 h-4 w-4" />Borrows</TabsTrigger>
           </TabsList>
-          <TabsContent value="books"><BooksTab /></TabsContent>
-          <TabsContent value="categories"><CategoriesTab /></TabsContent>
-          <TabsContent value="orders"><OrdersTab /></TabsContent>
-          <TabsContent value="borrows"><BorrowsTab /></TabsContent>
+          <TabsContent value="my-books"><PublisherBooksTab /></TabsContent>
+          <TabsContent value="categories"><PublisherCategoriesTab /></TabsContent>
+          <TabsContent value="orders"><PublisherOrdersTab /></TabsContent>
         </Tabs>
       </div>
       <Footer />
@@ -48,19 +52,21 @@ export default function Dashboard() {
   );
 }
 
-function BooksTab() {
-  const { user, isAdmin } = useAuth();
+function PublisherBooksTab() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editBook, setEditBook] = useState<any>(null);
 
   const { data: books = [] } = useQuery({
-    queryKey: ["dashboard-books"],
+    queryKey: ["publisher-books", user?.id],
     queryFn: async () => {
-      let query = supabase.from("books").select("*, categories(name)").order("created_at", { ascending: false });
-      if (!isAdmin) query = query.eq("publisher_id", user!.id);
-      const { data, error } = await query;
+      const { data, error } = await supabase
+        .from("books")
+        .select("*, categories(name)")
+        .eq("publisher_id", user!.id)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -81,7 +87,7 @@ function BooksTab() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard-books"] });
+      queryClient.invalidateQueries({ queryKey: ["publisher-books"] });
       toast({ title: "Book deleted" });
     },
   });
@@ -89,40 +95,58 @@ function BooksTab() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="font-heading text-xl font-semibold">Manage Books</h2>
+        <p className="text-sm text-muted-foreground">{books.length} book(s) published</p>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditBook(null); }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Add Book</Button></DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle className="font-heading">{editBook ? "Edit Book" : "Add Book"}</DialogTitle></DialogHeader>
-            <BookForm book={editBook} categories={categories} onClose={() => { setOpen(false); setEditBook(null); }} />
+            <PubBookForm book={editBook} categories={categories} onClose={() => { setOpen(false); setEditBook(null); }} />
           </DialogContent>
         </Dialog>
       </div>
-      <div className="space-y-3">
-        {books.map((book: any) => (
-          <Card key={book.id}>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="h-16 w-11 rounded bg-muted overflow-hidden flex-shrink-0">
-                {book.cover_image_url && <img src={book.cover_image_url} alt="" className="h-full w-full object-cover" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold truncate">{book.title}</h3>
-                <p className="text-sm text-muted-foreground">{book.author} · ${book.price} · Stock: {book.stock_quantity}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="icon" onClick={() => { setEditBook(book); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(book.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {books.length === 0 && <p className="text-center text-muted-foreground py-8">No books yet.</p>}
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Book</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-right">Stock</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {books.map((book: any) => (
+              <TableRow key={book.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-8 rounded bg-muted overflow-hidden flex-shrink-0">
+                      {book.cover_image_url && <img src={book.cover_image_url} alt="" className="h-full w-full object-cover" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{book.title}</p>
+                      <p className="text-xs text-muted-foreground">{book.author}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell><Badge variant="secondary">{(book.categories as any)?.name || "—"}</Badge></TableCell>
+                <TableCell className="text-right">${book.price}</TableCell>
+                <TableCell className="text-right">{book.stock_quantity}</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" onClick={() => { setEditBook(book); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(book.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
+      {books.length === 0 && <p className="text-center text-muted-foreground py-8">No books yet. Add your first book!</p>}
     </div>
   );
 }
 
-function BookForm({ book, categories, onClose }: { book: any; categories: any[]; onClose: () => void }) {
+function PubBookForm({ book, categories, onClose }: { book: any; categories: any[]; onClose: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -146,7 +170,7 @@ function BookForm({ book, categories, onClose }: { book: any; categories: any[];
       price: parseFloat(form.price),
       stock_quantity: parseInt(form.stock_quantity),
       category_id: form.category_id || null,
-      publisher_id: book?.publisher_id || user!.id,
+      publisher_id: user!.id,
     };
     try {
       if (book) {
@@ -158,7 +182,7 @@ function BookForm({ book, categories, onClose }: { book: any; categories: any[];
         if (error) throw error;
         toast({ title: "Book added" });
       }
-      queryClient.invalidateQueries({ queryKey: ["dashboard-books"] });
+      queryClient.invalidateQueries({ queryKey: ["publisher-books"] });
       onClose();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -169,7 +193,7 @@ function BookForm({ book, categories, onClose }: { book: any; categories: any[];
     <form onSubmit={handleSubmit} className="space-y-4">
       <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>
       <div><Label>Author</Label><Input value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} required /></div>
-      <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+      <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
       <div className="grid grid-cols-2 gap-4">
         <div><Label>Price ($)</Label><Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
         <div><Label>Stock</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
@@ -180,9 +204,7 @@ function BookForm({ book, categories, onClose }: { book: any; categories: any[];
         <Label>Category</Label>
         <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
           <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-          <SelectContent>
-            {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
+          <SelectContent>{categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div className="flex items-center gap-6">
@@ -194,7 +216,7 @@ function BookForm({ book, categories, onClose }: { book: any; categories: any[];
   );
 }
 
-function CategoriesTab() {
+function PublisherCategoriesTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -219,17 +241,10 @@ function CategoriesTab() {
     setName(""); setDesc(""); setOpen(false);
   };
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("categories").delete().eq("id", id);
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    queryClient.invalidateQueries({ queryKey: ["categories"] });
-    toast({ title: "Category deleted" });
-  };
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="font-heading text-xl font-semibold">Manage Categories</h2>
+        <h2 className="font-heading text-xl font-semibold">Categories</h2>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Add Category</Button></DialogTrigger>
           <DialogContent>
@@ -247,22 +262,20 @@ function CategoriesTab() {
           <Card key={cat.id}>
             <CardContent className="flex items-center justify-between p-4">
               <div><h3 className="font-semibold">{cat.name}</h3>{cat.description && <p className="text-sm text-muted-foreground">{cat.description}</p>}</div>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(cat.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             </CardContent>
           </Card>
         ))}
-        {categories.length === 0 && <p className="text-center text-muted-foreground py-8">No categories yet.</p>}
       </div>
     </div>
   );
 }
 
-function OrdersTab() {
+function PublisherOrdersTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: orders = [] } = useQuery({
-    queryKey: ["dashboard-orders"],
+    queryKey: ["publisher-orders"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
@@ -276,13 +289,13 @@ function OrdersTab() {
   const updateStatus = async (orderId: string, status: string) => {
     const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    queryClient.invalidateQueries({ queryKey: ["dashboard-orders"] });
+    queryClient.invalidateQueries({ queryKey: ["publisher-orders"] });
     toast({ title: `Order ${status}` });
   };
 
   return (
     <div>
-      <h2 className="font-heading text-xl font-semibold mb-4">Manage Orders</h2>
+      <h2 className="font-heading text-xl font-semibold mb-4">Process Orders ({orders.length})</h2>
       <div className="space-y-3">
         {orders.map((order: any) => (
           <Card key={order.id}>
@@ -292,13 +305,13 @@ function OrdersTab() {
                   <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
                   <p className="text-sm text-muted-foreground">{(order.profiles as any)?.display_name} · {format(new Date(order.created_at), "MMM d, yyyy")}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="text-right">
                   <Badge>{order.status}</Badge>
-                  <span className="font-bold text-primary">${Number(order.total_amount).toFixed(2)}</span>
+                  <p className="font-bold text-primary mt-1">${Number(order.total_amount).toFixed(2)}</p>
                 </div>
               </div>
-              <div className="flex gap-2 mt-3">
-                {["pending", "processing", "shipped", "delivered", "cancelled"].map((s) => (
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {["pending", "processing", "shipped", "delivered"].map((s) => (
                   <Button key={s} variant={order.status === s ? "default" : "outline"} size="sm" onClick={() => updateStatus(order.id, s)} className="text-xs capitalize">
                     {s}
                   </Button>
@@ -308,56 +321,6 @@ function OrdersTab() {
           </Card>
         ))}
         {orders.length === 0 && <p className="text-center text-muted-foreground py-8">No orders yet.</p>}
-      </div>
-    </div>
-  );
-}
-
-function BorrowsTab() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const { data: borrows = [] } = useQuery({
-    queryKey: ["dashboard-borrows"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("book_borrows")
-        .select("*, books(title, author), profiles!book_borrows_user_id_fkey(display_name)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const markReturned = async (id: string) => {
-    const { error } = await supabase.from("book_borrows").update({ status: "returned", return_date: new Date().toISOString() }).eq("id", id);
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    queryClient.invalidateQueries({ queryKey: ["dashboard-borrows"] });
-    toast({ title: "Book marked as returned" });
-  };
-
-  return (
-    <div>
-      <h2 className="font-heading text-xl font-semibold mb-4">Manage Borrows</h2>
-      <div className="space-y-3">
-        {borrows.map((borrow: any) => (
-          <Card key={borrow.id}>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex-1">
-                <h3 className="font-semibold">{borrow.books?.title}</h3>
-                <p className="text-sm text-muted-foreground">Borrowed by: {(borrow.profiles as any)?.display_name}</p>
-                <p className="text-xs text-muted-foreground">Due: {format(new Date(borrow.due_date), "MMM d, yyyy")}</p>
-              </div>
-              <Badge variant={borrow.status === "returned" ? "secondary" : borrow.status === "overdue" ? "destructive" : "default"}>
-                {borrow.status}
-              </Badge>
-              {borrow.status === "borrowed" && (
-                <Button size="sm" variant="outline" onClick={() => markReturned(borrow.id)}>Mark Returned</Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-        {borrows.length === 0 && <p className="text-center text-muted-foreground py-8">No borrows yet.</p>}
       </div>
     </div>
   );

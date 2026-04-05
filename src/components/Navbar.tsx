@@ -1,10 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, User, LogOut, BookOpen, LayoutDashboard, Menu, X } from "lucide-react";
+import { ShoppingCart, User, LogOut, BookOpen, LayoutDashboard, Menu, X, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 
 export default function Navbar() {
@@ -21,7 +21,6 @@ export default function Navbar() {
           <span className="font-heading text-xl font-bold text-foreground">BookStore</span>
         </Link>
 
-        {/* Desktop nav */}
         <div className="hidden items-center gap-6 md:flex">
           <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Home</Link>
           <Link to="/books" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Books</Link>
@@ -50,12 +49,20 @@ export default function Navbar() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => navigate("/orders")}>My Orders</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/borrows")}>My Borrows</DropdownMenuItem>
-                {(isAdmin || isPublisher) && (
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    Dashboard
+                <DropdownMenuSeparator />
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate("/admin")}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Admin Dashboard
                   </DropdownMenuItem>
                 )}
+                {isPublisher && (
+                  <DropdownMenuItem onClick={() => navigate("/publisher")}>
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Publisher Dashboard
+                  </DropdownMenuItem>
+                )}
+                {(isAdmin || isPublisher) && <DropdownMenuSeparator />}
                 <DropdownMenuItem onClick={signOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign Out
@@ -63,17 +70,20 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={() => navigate("/auth")} size="sm">Sign In</Button>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate("/auth")} size="sm">Sign In</Button>
+              <Button onClick={() => navigate("/admin-signup")} size="sm" variant="outline">
+                <Shield className="mr-1 h-3 w-3" /> Admin
+              </Button>
+            </div>
           )}
         </div>
 
-        {/* Mobile menu toggle */}
         <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </div>
 
-      {/* Mobile nav */}
       {mobileOpen && (
         <div className="border-t bg-background px-4 py-4 md:hidden space-y-3">
           <Link to="/" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Home</Link>
@@ -83,14 +93,16 @@ export default function Navbar() {
             <>
               <Link to="/cart" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Cart ({totalItems})</Link>
               <Link to="/orders" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>My Orders</Link>
-              {(isAdmin || isPublisher) && (
-                <Link to="/dashboard" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Dashboard</Link>
-              )}
+              {isAdmin && <Link to="/admin" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Admin Dashboard</Link>}
+              {isPublisher && <Link to="/publisher" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Publisher Dashboard</Link>}
               <button className="text-sm font-medium text-destructive" onClick={() => { signOut(); setMobileOpen(false); }}>Sign Out</button>
             </>
           )}
           {!user && (
-            <Link to="/auth" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Sign In</Link>
+            <>
+              <Link to="/auth" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Sign In</Link>
+              <Link to="/admin-signup" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Admin/Publisher Signup</Link>
+            </>
           )}
         </div>
       )}

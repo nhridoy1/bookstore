@@ -20,6 +20,8 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [profileCountry, setProfileCountry] = useState("");
   const [saving, setSaving] = useState(false);
 
   const { data: profile } = useQuery({

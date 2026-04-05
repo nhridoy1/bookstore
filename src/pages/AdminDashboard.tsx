@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog, UserPlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog, UserPlus, CreditCard, Banknote } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AdminDashboard() {
@@ -425,6 +425,11 @@ function AdminOrdersTab() {
                   <Badge>{order.status}</Badge>
                   <p className="font-heading font-bold text-primary mt-1">${Number(order.total_amount).toFixed(2)}</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                {order.payment_method === "stripe" ? <CreditCard className="h-3 w-3" /> : <Banknote className="h-3 w-3" />}
+                {order.payment_method === "stripe" ? "Online Payment" : "Cash on Delivery"}
+                {order.payment_status === "paid" && <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1">Paid</Badge>}
               </div>
               <div className="flex gap-2 flex-wrap">
                 {["pending", "processing", "shipped", "delivered", "cancelled"].map((s) => (

@@ -86,7 +86,7 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={() => navigate("/auth")} size="sm">Login</Button>
+            <Button onClick={() => navigate("/login")} size="sm">Login</Button>
           )}
         </div>
 
@@ -113,7 +113,7 @@ export default function Navbar() {
             <Link to="/profile" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Profile & Settings</Link>
           )}
           {!user && (
-            <Link to="/auth" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Login</Link>
+            <Link to="/login" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Login</Link>
           )}
         </div>
       )}

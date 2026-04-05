@@ -14,6 +14,9 @@ import Navbar from "@/components/Navbar";
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [address, setAddress] = useState("");
+  const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,12 +24,25 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName, address, country },
+      },
+    });
+    if (!error && data.user) {
+      // Update profile with address & country
+      await supabase
+        .from("profiles")
+        .update({ display_name: fullName, address, country })
+        .eq("user_id", data.user.id);
+    }
     setLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Account created!", description: "You can now sign in." });
+      toast({ title: "Account created!", description: "Please check your email to verify, then login." });
     }
   };
 

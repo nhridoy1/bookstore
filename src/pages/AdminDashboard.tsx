@@ -529,7 +529,7 @@ function AdminUsersTab() {
     },
   });
 
-  const removeRole = async (userId: string, role: string) => {
+  const removeRole = async (userId: string, role: "admin" | "publisher" | "user") => {
     const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     queryClient.invalidateQueries({ queryKey: ["admin-users"] });

@@ -20,6 +20,8 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [profileCountry, setProfileCountry] = useState("");
   const [saving, setSaving] = useState(false);
 
   const { data: profile } = useQuery({
@@ -40,6 +42,8 @@ export default function Profile() {
     if (profile) {
       setDisplayName(profile.display_name || "");
       setAvatarUrl(profile.avatar_url || "");
+      setProfileAddress((profile as any).address || "");
+      setProfileCountry((profile as any).country || "");
     }
   }, [profile]);
 
@@ -62,7 +66,7 @@ export default function Profile() {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ display_name: displayName, avatar_url: avatarUrl || null })
+        .update({ display_name: displayName, avatar_url: avatarUrl || null, address: profileAddress || null, country: profileCountry || null } as any)
         .eq("user_id", user.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -112,6 +116,14 @@ export default function Profile() {
               <div>
                 <Label htmlFor="avatarUrl">Avatar URL</Label>
                 <Input id="avatarUrl" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." />
+              </div>
+              <div>
+                <Label htmlFor="profileAddress">Present Address</Label>
+                <Input id="profileAddress" value={profileAddress} onChange={(e) => setProfileAddress(e.target.value)} placeholder="123 Main St, City" />
+              </div>
+              <div>
+                <Label htmlFor="profileCountry">Country</Label>
+                <Input id="profileCountry" value={profileCountry} onChange={(e) => setProfileCountry(e.target.value)} placeholder="Bangladesh" />
               </div>
               <div>
                 <Label>Email</Label>

@@ -14,6 +14,9 @@ import Navbar from "@/components/Navbar";
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [address, setAddress] = useState("");
+  const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,12 +24,25 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName, address, country },
+      },
+    });
+    if (!error && data.user) {
+      // Update profile with address & country
+      await supabase
+        .from("profiles")
+        .update({ display_name: fullName, address, country })
+        .eq("user_id", data.user.id);
+    }
     setLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Account created!", description: "You can now sign in." });
+      toast({ title: "Account created!", description: "Please check your email to verify, then login." });
     }
   };
 
@@ -92,8 +108,11 @@ export default function Auth() {
               </TabsContent>
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+                  <div><Label htmlFor="signup-name">Full Name</Label><Input id="signup-name" value={fullName} onChange={(e) => setFullName(e.target.value)} required placeholder="John Doe" /></div>
                   <div><Label htmlFor="signup-email">Email</Label><Input id="signup-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
                   <div><Label htmlFor="signup-password">Password</Label><Input id="signup-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></div>
+                  <div><Label htmlFor="signup-address">Present Address</Label><Input id="signup-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St, City" /></div>
+                  <div><Label htmlFor="signup-country">Country</Label><Input id="signup-country" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Bangladesh" /></div>
                   <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating account..." : "Register"}</Button>
                 </form>
               </TabsContent>

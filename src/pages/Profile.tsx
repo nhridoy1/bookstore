@@ -42,6 +42,8 @@ export default function Profile() {
     if (profile) {
       setDisplayName(profile.display_name || "");
       setAvatarUrl(profile.avatar_url || "");
+      setProfileAddress((profile as any).address || "");
+      setProfileCountry((profile as any).country || "");
     }
   }, [profile]);
 

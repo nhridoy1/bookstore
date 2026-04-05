@@ -43,12 +43,23 @@ export default function Books() {
     },
   });
 
+  const sortedBooks = useMemo(() => {
+    const sorted = [...books];
+    switch (sortBy) {
+      case "price-low": return sorted.sort((a, b) => a.price - b.price);
+      case "price-high": return sorted.sort((a, b) => b.price - a.price);
+      case "title": return sorted.sort((a, b) => a.title.localeCompare(b.title));
+      default: return sorted;
+    }
+  }, [books, sortBy]);
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <div className="container mx-auto px-4 py-8 flex-1">
         <h1 className="font-heading text-3xl font-bold mb-8">All Books</h1>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center mb-8">
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-center mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search books..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
@@ -60,7 +71,43 @@ export default function Books() {
               {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Sort by" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="price-low">Price: Low to High</SelectItem>
+              <SelectItem value="price-high">Price: High to Low</SelectItem>
+              <SelectItem value="title">Title A–Z</SelectItem>
+            </SelectContent>
+          </Select>
+          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <SlidersHorizontal className="h-4 w-4" /> Filters
+              </Button>
+            </CollapsibleTrigger>
+          </Collapsible>
         </div>
+
+        <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <CollapsibleContent>
+            <div className="rounded-lg border bg-card p-4 mb-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Price Range: ${priceRange[0]} – ${priceRange[1]}</label>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs text-muted-foreground">$0</span>
+                  <Slider
+                    min={0} max={500} step={5}
+                    value={priceRange}
+                    onValueChange={(v) => setPriceRange(v as [number, number])}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-muted-foreground">$500</span>
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
         {isLoading ? (
           <div className="grid gap-6 grid-cols-2 md:grid-cols-4">
             {[...Array(8)].map((_, i) => <div key={i} className="h-80 rounded-lg bg-muted animate-pulse" />)}

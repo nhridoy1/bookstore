@@ -37,11 +37,12 @@ export default function BookDetail() {
       const { error } = await supabase.from("book_borrows").insert({
         user_id: user.id,
         book_id: book.id,
+        status: "pending",
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Book borrowed!", description: "Due in 14 days." });
+      toast({ title: "Borrow request sent!", description: "Waiting for admin/publisher approval." });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });

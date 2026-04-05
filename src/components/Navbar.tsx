@@ -1,10 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, User, LogOut, BookOpen, LayoutDashboard, Menu, X, Shield } from "lucide-react";
+import { ShoppingCart, User, LogOut, BookOpen, LayoutDashboard, Menu, X, Shield, Settings, Package, Library } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 
 export default function Navbar() {
@@ -42,13 +43,28 @@ export default function Navbar() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.user_metadata?.avatar_url || user.user_metadata?.picture} />
+                    <AvatarFallback className="text-xs">{(user.user_metadata?.full_name || user.email || "U")[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate("/orders")}>My Orders</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/borrows")}>My Borrows</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <p className="font-medium">{user.user_metadata?.full_name || "User"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <Settings className="mr-2 h-4 w-4" /> Profile & Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/orders")}>
+                  <Package className="mr-2 h-4 w-4" /> My Orders
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/borrows")}>
+                  <Library className="mr-2 h-4 w-4" /> My Borrows
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/admin")}>
@@ -63,19 +79,14 @@ export default function Navbar() {
                   </DropdownMenuItem>
                 )}
                 {(isAdmin || isPublisher) && <DropdownMenuSeparator />}
-                <DropdownMenuItem onClick={signOut}>
+                <DropdownMenuItem onClick={signOut} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="flex gap-2">
-              <Button onClick={() => navigate("/auth")} size="sm">Sign In</Button>
-              <Button onClick={() => navigate("/admin-signup")} size="sm" variant="outline">
-                <Shield className="mr-1 h-3 w-3" /> Admin
-              </Button>
-            </div>
+            <Button onClick={() => navigate("/auth")} size="sm">Sign In</Button>
           )}
         </div>
 
@@ -98,11 +109,11 @@ export default function Navbar() {
               <button className="text-sm font-medium text-destructive" onClick={() => { signOut(); setMobileOpen(false); }}>Sign Out</button>
             </>
           )}
+          {user && (
+            <Link to="/profile" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Profile & Settings</Link>
+          )}
           {!user && (
-            <>
-              <Link to="/auth" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Sign In</Link>
-              <Link to="/admin-signup" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Admin/Publisher Signup</Link>
-            </>
+            <Link to="/auth" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Sign In</Link>
           )}
         </div>
       )}

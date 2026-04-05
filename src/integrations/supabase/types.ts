@@ -56,6 +56,13 @@ export type Database = {
             referencedRelation: "books"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "book_borrows_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       books: {
@@ -219,6 +226,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          payment_method: string
+          payment_status: string
           shipping_address: string | null
           status: string
           stripe_payment_intent_id: string | null
@@ -229,6 +238,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          payment_method?: string
+          payment_status?: string
           shipping_address?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
@@ -239,6 +250,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          payment_method?: string
+          payment_status?: string
           shipping_address?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
@@ -246,7 +259,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       profiles: {
         Row: {

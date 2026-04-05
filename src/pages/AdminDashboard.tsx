@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog, UserPlus, CreditCard, Banknote } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AdminDashboard() {
@@ -368,7 +368,7 @@ function AdminOrdersTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("*, order_items(*, books(title)), profiles!orders_user_id_fkey(display_name)")
+        .select("*, order_items(*, books(title)), profiles(display_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -426,6 +426,11 @@ function AdminOrdersTab() {
                   <p className="font-heading font-bold text-primary mt-1">${Number(order.total_amount).toFixed(2)}</p>
                 </div>
               </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                {order.payment_method === "stripe" ? <CreditCard className="h-3 w-3" /> : <Banknote className="h-3 w-3" />}
+                {order.payment_method === "stripe" ? "Online Payment" : "Cash on Delivery"}
+                {order.payment_status === "paid" && <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1">Paid</Badge>}
+              </div>
               <div className="flex gap-2 flex-wrap">
                 {["pending", "processing", "shipped", "delivered", "cancelled"].map((s) => (
                   <Button key={s} variant={order.status === s ? "default" : "outline"} size="sm" onClick={() => updateStatus(order.id, s)} className="text-xs capitalize">
@@ -454,7 +459,7 @@ function AdminBorrowsTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("book_borrows")
-        .select("*, books(title, author), profiles!book_borrows_user_id_fkey(display_name)")
+        .select("*, books(title, author), profiles(display_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -516,6 +521,9 @@ function AdminBorrowsTab() {
 function AdminUsersTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignEmail, setAssignEmail] = useState("");
+  const [assignRole, setAssignRole] = useState<string>("publisher");
 
   const { data: users = [] } = useQuery({
     queryKey: ["admin-users"],
@@ -536,9 +544,66 @@ function AdminUsersTab() {
     toast({ title: `Removed ${role} role` });
   };
 
+  const handleAssignRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Find the user by display_name (which contains email for email signups)
+      const { data: profiles, error: pErr } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .or(`display_name.ilike.%${assignEmail}%`);
+      if (pErr) throw pErr;
+      if (!profiles || profiles.length === 0) {
+        toast({ title: "User not found", description: "No user matches that name/email.", variant: "destructive" });
+        return;
+      }
+      const targetUserId = profiles[0].user_id;
+      const { error } = await supabase.from("user_roles").insert({ user_id: targetUserId, role: assignRole as any });
+      if (error) {
+        if (error.code === "23505") {
+          toast({ title: "Already assigned", description: "User already has this role.", variant: "destructive" });
+        } else throw error;
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast({ title: "Role assigned!", description: `${assignRole} role given to ${profiles[0].display_name}` });
+      setAssignOpen(false);
+      setAssignEmail("");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div>
-      <h2 className="font-heading text-xl font-semibold mb-4">Users & Roles ({users.length})</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="font-heading text-xl font-semibold">Users & Roles ({users.length})</h2>
+        <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+          <DialogTrigger asChild>
+            <Button><UserPlus className="mr-2 h-4 w-4" />Assign Role</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle className="font-heading">Assign Role to User</DialogTitle></DialogHeader>
+            <form onSubmit={handleAssignRole} className="space-y-4">
+              <div>
+                <Label>User Name or Email</Label>
+                <Input value={assignEmail} onChange={(e) => setAssignEmail(e.target.value)} required placeholder="Search by name or email..." />
+              </div>
+              <div>
+                <Label>Role</Label>
+                <Select value={assignRole} onValueChange={setAssignRole}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="publisher">Publisher</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full">Assign Role</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
       <div className="rounded-lg border overflow-hidden">
         <Table>
           <TableHeader>

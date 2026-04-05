@@ -279,7 +279,7 @@ function PublisherOrdersTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("*, order_items(*, books(title)), profiles!orders_user_id_fkey(display_name)")
+        .select("*, order_items(*, books(title)), profiles(display_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

@@ -31,7 +31,7 @@ export default function Books() {
   });
 
   const { data: books = [], isLoading } = useQuery({
-    queryKey: ["books", selectedCategory, search],
+    queryKey: ["books", selectedCategory, search, priceRange],
     queryFn: async () => {
       let query = supabase.from("books").select("*, categories(name)").order("created_at", { ascending: false });
       if (selectedCategory && selectedCategory !== "all") query = query.eq("category_id", selectedCategory);

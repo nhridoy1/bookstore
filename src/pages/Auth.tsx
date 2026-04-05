@@ -108,8 +108,11 @@ export default function Auth() {
               </TabsContent>
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+                  <div><Label htmlFor="signup-name">Full Name</Label><Input id="signup-name" value={fullName} onChange={(e) => setFullName(e.target.value)} required placeholder="John Doe" /></div>
                   <div><Label htmlFor="signup-email">Email</Label><Input id="signup-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
                   <div><Label htmlFor="signup-password">Password</Label><Input id="signup-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></div>
+                  <div><Label htmlFor="signup-address">Present Address</Label><Input id="signup-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St, City" /></div>
+                  <div><Label htmlFor="signup-country">Country</Label><Input id="signup-country" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Bangladesh" /></div>
                   <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating account..." : "Register"}</Button>
                 </form>
               </TabsContent>

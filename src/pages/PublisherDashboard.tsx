@@ -41,10 +41,12 @@ export default function PublisherDashboard() {
             <TabsTrigger value="my-books"><BookOpen className="mr-2 h-4 w-4" />My Books</TabsTrigger>
             <TabsTrigger value="categories"><FolderTree className="mr-2 h-4 w-4" />Categories</TabsTrigger>
             <TabsTrigger value="orders"><Package className="mr-2 h-4 w-4" />Orders</TabsTrigger>
+            <TabsTrigger value="borrows"><Users className="mr-2 h-4 w-4" />Borrows</TabsTrigger>
           </TabsList>
           <TabsContent value="my-books"><PublisherBooksTab /></TabsContent>
           <TabsContent value="categories"><PublisherCategoriesTab /></TabsContent>
           <TabsContent value="orders"><PublisherOrdersTab /></TabsContent>
+          <TabsContent value="borrows"><PublisherBorrowsTab /></TabsContent>
         </Tabs>
       </div>
       <Footer />

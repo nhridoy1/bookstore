@@ -6,8 +6,11 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { useState, useMemo } from "react";
+import { Search, SlidersHorizontal, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function Books() {
   const [searchParams] = useSearchParams();

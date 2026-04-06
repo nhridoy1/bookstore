@@ -38,16 +38,18 @@ export default function PublisherDashboard() {
           </div>
         </div>
         <Tabs defaultValue="my-books">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="my-books"><BookOpen className="mr-2 h-4 w-4" />My Books</TabsTrigger>
             <TabsTrigger value="categories"><FolderTree className="mr-2 h-4 w-4" />Categories</TabsTrigger>
             <TabsTrigger value="orders"><Package className="mr-2 h-4 w-4" />Orders</TabsTrigger>
             <TabsTrigger value="borrows"><Users className="mr-2 h-4 w-4" />Borrows</TabsTrigger>
+            <TabsTrigger value="revenue"><TrendingUp className="mr-2 h-4 w-4" />Revenue</TabsTrigger>
           </TabsList>
           <TabsContent value="my-books"><PublisherBooksTab /></TabsContent>
           <TabsContent value="categories"><PublisherCategoriesTab /></TabsContent>
           <TabsContent value="orders"><PublisherOrdersTab /></TabsContent>
           <TabsContent value="borrows"><PublisherBorrowsTab /></TabsContent>
+          <TabsContent value="revenue"><PublisherRevenueTab /></TabsContent>
         </Tabs>
       </div>
       <Footer />

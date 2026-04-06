@@ -633,8 +633,14 @@ function AdminBorrowsTab() {
           <TableBody>
             {borrows.map((b: any) => (
               <TableRow key={b.id}>
-                <TableCell><p className="font-medium">{b.books?.title}</p><p className="text-xs text-muted-foreground">{b.books?.author}</p></TableCell>
-                <TableCell>{(b.profiles as any)?.display_name || "Unknown"}</TableCell>
+                <TableCell>
+                  <p className="font-medium">{b.books?.title}</p>
+                  <p className="text-xs text-muted-foreground">{b.books?.author}</p>
+                </TableCell>
+                <TableCell>
+                  <p>{(b.profiles as any)?.display_name || "Unknown"}</p>
+                  {b.user_message && <p className="text-xs text-muted-foreground italic mt-1">"{b.user_message}"</p>}
+                </TableCell>
                 <TableCell className="text-sm">{format(new Date(b.created_at), "MMM d, yyyy")}</TableCell>
                 <TableCell className="text-sm">{b.status === "pending" ? "—" : format(new Date(b.due_date), "MMM d, yyyy")}</TableCell>
                 <TableCell>

@@ -457,6 +457,7 @@ function PublisherBorrowsTab() {
                 <div>
                   <p className="font-semibold">{b.books?.title}</p>
                   <p className="text-sm text-muted-foreground">{(b.profiles as any)?.display_name} · {format(new Date(b.created_at), "MMM d, yyyy")}</p>
+                  {b.user_message && <p className="text-xs text-muted-foreground italic mt-1">"{b.user_message}"</p>}
                 </div>
                 <Badge variant={
                   b.status === "returned" ? "secondary" : 

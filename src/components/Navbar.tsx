@@ -107,6 +107,7 @@ export default function Navbar() {
             <>
               <Link to="/cart" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Cart ({totalItems})</Link>
               <Link to="/orders" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>My Orders</Link>
+              <Link to="/wishlist" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Wishlist</Link>
               {isAdmin && <Link to="/admin" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Admin Dashboard</Link>}
               {isPublisher && <Link to="/publisher" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Publisher Dashboard</Link>}
               <button className="text-sm font-medium text-destructive" onClick={() => { signOut(); setMobileOpen(false); }}>Sign Out</button>

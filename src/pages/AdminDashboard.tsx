@@ -64,17 +64,19 @@ function StatsCards() {
   const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [books, orders, borrows, categories] = await Promise.all([
+      const [books, orders, borrows, categories, users] = await Promise.all([
         supabase.from("books").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id", { count: "exact", head: true }),
         supabase.from("book_borrows").select("id", { count: "exact", head: true }),
         supabase.from("categories").select("id", { count: "exact", head: true }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
       ]);
       return {
         books: books.count || 0,
         orders: orders.count || 0,
         borrows: borrows.count || 0,
         categories: categories.count || 0,
+        users: users.count || 0,
       };
     },
   });
@@ -84,6 +86,7 @@ function StatsCards() {
     { label: "Categories", value: stats?.categories || 0, icon: FolderTree, color: "text-accent" },
     { label: "Orders", value: stats?.orders || 0, icon: Package, color: "text-orange-500" },
     { label: "Borrows", value: stats?.borrows || 0, icon: Users, color: "text-blue-500" },
+    { label: "Total Users", value: stats?.users || 0, icon: UserCog, color: "text-green-500" },
   ];
 
   return (

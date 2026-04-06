@@ -17,6 +17,7 @@ import Borrows from "./pages/Borrows";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import PublisherDashboard from "./pages/PublisherDashboard";
+import Wishlist from "./pages/Wishlist";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

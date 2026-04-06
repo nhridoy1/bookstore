@@ -826,4 +826,107 @@ function AdminUsersTab() {
   );
 }
 
+function RevenueTab() {
+  const { data: orders = [] } = useQuery({
+    queryKey: ["admin-revenue-orders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("total_amount, created_at, status, payment_status")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: borrows = [] } = useQuery({
+    queryKey: ["admin-revenue-borrows"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_borrows")
+        .select("created_at, status, books(borrow_price)")
+        .in("status", ["borrowed", "returned"]);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const totalOrderRevenue = orders
+    .filter((o: any) => o.status !== "cancelled")
+    .reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
+
+  const totalBorrowRevenue = borrows.reduce((sum: number, b: any) => sum + Number((b.books as any)?.borrow_price || 0), 0);
+
+  const totalRevenue = totalOrderRevenue + totalBorrowRevenue;
+
+  // Monthly chart data
+  const monthlyData: Record<string, { month: string; sales: number; borrows: number }> = {};
+  orders.filter((o: any) => o.status !== "cancelled").forEach((o: any) => {
+    const month = format(new Date(o.created_at), "MMM yyyy");
+    if (!monthlyData[month]) monthlyData[month] = { month, sales: 0, borrows: 0 };
+    monthlyData[month].sales += Number(o.total_amount);
+  });
+  borrows.forEach((b: any) => {
+    const month = format(new Date(b.created_at), "MMM yyyy");
+    if (!monthlyData[month]) monthlyData[month] = { month, sales: 0, borrows: 0 };
+    monthlyData[month].borrows += Number((b.books as any)?.borrow_price || 0);
+  });
+  const chartData = Object.values(monthlyData);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-heading text-xl font-semibold">Revenue Overview</h2>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-green-100 p-3"><DollarSign className="h-6 w-6 text-green-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Total Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-blue-100 p-3"><Package className="h-6 w-6 text-blue-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalOrderRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Sales Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-purple-100 p-3"><BookOpen className="h-6 w-6 text-purple-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalBorrowRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Borrow Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="font-heading text-lg">Monthly Revenue</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Bar dataKey="sales" fill="hsl(var(--primary))" name="Sales" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="borrows" fill="hsl(var(--accent))" name="Borrows" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export { BookForm };

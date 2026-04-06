@@ -224,6 +224,8 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
     category_id: book?.category_id || "",
     is_borrowable: book?.is_borrowable || false,
     is_featured: book?.is_featured || false,
+    borrow_price: book?.borrow_price?.toString() || "0",
+    borrow_policy: book?.borrow_policy || "",
   });
 
   const handleFileSelect = (file: File) => {

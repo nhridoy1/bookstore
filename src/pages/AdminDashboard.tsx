@@ -274,6 +274,8 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
         ...form,
         price: parseFloat(form.price),
         stock_quantity: parseInt(form.stock_quantity),
+        borrow_price: parseFloat(form.borrow_price),
+        borrow_policy: form.borrow_policy || null,
         category_id: form.category_id || null,
         publisher_id: book?.publisher_id || user!.id,
         cover_image_url: coverUrl,

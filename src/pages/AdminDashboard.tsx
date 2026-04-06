@@ -90,7 +90,7 @@ function StatsCards() {
   ];
 
   return (
-    <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
       {items.map(({ label, value, icon: Icon, color }) => (
         <Card key={label}>
           <CardContent className="flex items-center gap-4 p-4">

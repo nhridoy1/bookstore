@@ -45,12 +45,14 @@ export default function AdminDashboard() {
             <TabsTrigger value="orders"><Package className="mr-2 h-4 w-4" />Orders</TabsTrigger>
             <TabsTrigger value="borrows"><Users className="mr-2 h-4 w-4" />Borrows</TabsTrigger>
             <TabsTrigger value="users"><UserCog className="mr-2 h-4 w-4" />Users</TabsTrigger>
+            <TabsTrigger value="revenue"><TrendingUp className="mr-2 h-4 w-4" />Revenue</TabsTrigger>
           </TabsList>
           <TabsContent value="books"><AdminBooksTab /></TabsContent>
           <TabsContent value="categories"><AdminCategoriesTab /></TabsContent>
           <TabsContent value="orders"><AdminOrdersTab /></TabsContent>
           <TabsContent value="borrows"><AdminBorrowsTab /></TabsContent>
           <TabsContent value="users"><AdminUsersTab /></TabsContent>
+          <TabsContent value="revenue"><RevenueTab /></TabsContent>
         </Tabs>
       </div>
       <Footer />

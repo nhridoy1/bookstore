@@ -65,6 +65,9 @@ export default function Navbar() {
                 <DropdownMenuItem onClick={() => navigate("/borrows")}>
                   <Library className="mr-2 h-4 w-4" /> My Borrows
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/wishlist")}>
+                  <Heart className="mr-2 h-4 w-4" /> Wishlist
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/admin")}>

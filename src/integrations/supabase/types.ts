@@ -27,6 +27,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          user_message: string | null
         }
         Insert: {
           approved_at?: string | null
@@ -40,6 +41,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          user_message?: string | null
         }
         Update: {
           approved_at?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          user_message?: string | null
         }
         Relationships: [
           {
@@ -74,6 +77,8 @@ export type Database = {
       books: {
         Row: {
           author: string
+          borrow_policy: string | null
+          borrow_price: number
           category_id: string | null
           cover_image_url: string | null
           created_at: string
@@ -90,6 +95,8 @@ export type Database = {
         }
         Insert: {
           author: string
+          borrow_policy?: string | null
+          borrow_price?: number
           category_id?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -106,6 +113,8 @@ export type Database = {
         }
         Update: {
           author?: string
+          borrow_policy?: string | null
+          borrow_price?: number
           category_id?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -325,6 +334,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wishlists: {
+        Row: {
+          book_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

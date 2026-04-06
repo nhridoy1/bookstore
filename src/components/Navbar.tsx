@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, User, LogOut, BookOpen, LayoutDashboard, Menu, X, Shield, Settings, Package, Library } from "lucide-react";
+import { ShoppingCart, User, LogOut, BookOpen, LayoutDashboard, Menu, X, Shield, Settings, Package, Library, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -65,6 +65,9 @@ export default function Navbar() {
                 <DropdownMenuItem onClick={() => navigate("/borrows")}>
                   <Library className="mr-2 h-4 w-4" /> My Borrows
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/wishlist")}>
+                  <Heart className="mr-2 h-4 w-4" /> Wishlist
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/admin")}>
@@ -104,6 +107,7 @@ export default function Navbar() {
             <>
               <Link to="/cart" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Cart ({totalItems})</Link>
               <Link to="/orders" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>My Orders</Link>
+              <Link to="/wishlist" className="block text-sm font-medium" onClick={() => setMobileOpen(false)}>Wishlist</Link>
               {isAdmin && <Link to="/admin" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Admin Dashboard</Link>}
               {isPublisher && <Link to="/publisher" className="block text-sm font-medium text-primary" onClick={() => setMobileOpen(false)}>Publisher Dashboard</Link>}
               <button className="text-sm font-medium text-destructive" onClick={() => { signOut(); setMobileOpen(false); }}>Sign Out</button>

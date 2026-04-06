@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,15 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, Upload, X, DollarSign, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function PublisherDashboard() {
   const { user, isPublisher, isAdmin, loading } = useAuth();
@@ -37,16 +38,18 @@ export default function PublisherDashboard() {
           </div>
         </div>
         <Tabs defaultValue="my-books">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="my-books"><BookOpen className="mr-2 h-4 w-4" />My Books</TabsTrigger>
             <TabsTrigger value="categories"><FolderTree className="mr-2 h-4 w-4" />Categories</TabsTrigger>
             <TabsTrigger value="orders"><Package className="mr-2 h-4 w-4" />Orders</TabsTrigger>
             <TabsTrigger value="borrows"><Users className="mr-2 h-4 w-4" />Borrows</TabsTrigger>
+            <TabsTrigger value="revenue"><TrendingUp className="mr-2 h-4 w-4" />Revenue</TabsTrigger>
           </TabsList>
           <TabsContent value="my-books"><PublisherBooksTab /></TabsContent>
           <TabsContent value="categories"><PublisherCategoriesTab /></TabsContent>
           <TabsContent value="orders"><PublisherOrdersTab /></TabsContent>
           <TabsContent value="borrows"><PublisherBorrowsTab /></TabsContent>
+          <TabsContent value="revenue"><PublisherRevenueTab /></TabsContent>
         </Tabs>
       </div>
       <Footer />
@@ -152,6 +155,11 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(book?.cover_image_url || "");
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [form, setForm] = useState({
     title: book?.title || "",
     author: book?.author || "",
@@ -162,19 +170,46 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
     category_id: book?.category_id || "",
     is_borrowable: book?.is_borrowable || false,
     is_featured: book?.is_featured || false,
-    cover_image_url: book?.cover_image_url || "",
+    borrow_price: book?.borrow_price?.toString() || "0",
+    borrow_policy: book?.borrow_policy || "",
   });
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith("image/")) { toast({ title: "Invalid file", variant: "destructive" }); return; }
+    if (file.size > 5 * 1024 * 1024) { toast({ title: "File too large", variant: "destructive" }); return; }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); }, []);
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setDragOver(true); }, []);
+  const handleDragLeave = useCallback(() => setDragOver(false), []);
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return imagePreview || null;
+    const ext = imageFile.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("book-covers").upload(fileName, imageFile);
+    if (error) throw new Error("Image upload failed: " + error.message);
+    const { data } = supabase.storage.from("book-covers").getPublicUrl(fileName);
+    return data.publicUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      ...form,
-      price: parseFloat(form.price),
-      stock_quantity: parseInt(form.stock_quantity),
-      category_id: form.category_id || null,
-      publisher_id: user!.id,
-    };
+    setUploading(true);
     try {
+      const coverUrl = await uploadImage();
+      const payload = {
+        ...form,
+        price: parseFloat(form.price),
+        stock_quantity: parseInt(form.stock_quantity),
+        borrow_price: parseFloat(form.borrow_price),
+        borrow_policy: form.borrow_policy || null,
+        category_id: form.category_id || null,
+        publisher_id: user!.id,
+        cover_image_url: coverUrl,
+      };
       if (book) {
         const { error } = await supabase.from("books").update(payload).eq("id", book.id);
         if (error) throw error;
@@ -188,6 +223,8 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
       onClose();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -201,7 +238,30 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
         <div><Label>Stock</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
       </div>
       <div><Label>ISBN</Label><Input value={form.isbn} onChange={(e) => setForm({ ...form, isbn: e.target.value })} /></div>
-      <div><Label>Cover Image URL</Label><Input value={form.cover_image_url} onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })} placeholder="https://..." /></div>
+      <div>
+        <Label>Cover Image</Label>
+        <div
+          className={`mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+          onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+          {imagePreview ? (
+            <div className="relative inline-block">
+              <img src={imagePreview} alt="Preview" className="h-32 w-auto rounded-md object-cover mx-auto" />
+              <button type="button" className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1" onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(""); }}>
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="py-4">
+              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Drag & drop or click to browse</p>
+              <p className="text-xs text-muted-foreground mt-1">Max 5MB • JPG, PNG, WebP</p>
+            </div>
+          )}
+        </div>
+      </div>
       <div>
         <Label>Category</Label>
         <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
@@ -213,7 +273,13 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
         <div className="flex items-center gap-2"><Switch checked={form.is_borrowable} onCheckedChange={(v) => setForm({ ...form, is_borrowable: v })} /><Label>Borrowable</Label></div>
         <div className="flex items-center gap-2"><Switch checked={form.is_featured} onCheckedChange={(v) => setForm({ ...form, is_featured: v })} /><Label>Featured</Label></div>
       </div>
-      <Button type="submit" className="w-full">{book ? "Update Book" : "Add Book"}</Button>
+      {form.is_borrowable && (
+        <>
+          <div><Label>Borrow Price ($) — 0 for free</Label><Input type="number" step="0.01" value={form.borrow_price} onChange={(e) => setForm({ ...form, borrow_price: e.target.value })} /></div>
+          <div><Label>Borrow Policy</Label><Textarea value={form.borrow_policy} onChange={(e) => setForm({ ...form, borrow_policy: e.target.value })} rows={4} placeholder="e.g., Book must be returned intact, no stains..." /></div>
+        </>
+      )}
+      <Button type="submit" className="w-full" disabled={uploading}>{uploading ? "Uploading..." : book ? "Update Book" : "Add Book"}</Button>
     </form>
   );
 }
@@ -391,6 +457,7 @@ function PublisherBorrowsTab() {
                 <div>
                   <p className="font-semibold">{b.books?.title}</p>
                   <p className="text-sm text-muted-foreground">{(b.profiles as any)?.display_name} · {format(new Date(b.created_at), "MMM d, yyyy")}</p>
+                  {b.user_message && <p className="text-xs text-muted-foreground italic mt-1">"{b.user_message}"</p>}
                 </div>
                 <Badge variant={
                   b.status === "returned" ? "secondary" : 
@@ -426,6 +493,110 @@ function PublisherBorrowsTab() {
         ))}
         {borrows.length === 0 && <p className="text-center text-muted-foreground py-8">No borrows yet.</p>}
       </div>
+    </div>
+  );
+}
+
+function PublisherRevenueTab() {
+  const { user } = useAuth();
+
+  const { data: orders = [] } = useQuery({
+    queryKey: ["pub-revenue-orders", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("total_amount, created_at, status, order_items(books(publisher_id))")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      // Filter orders that contain books belonging to this publisher
+      return data.filter((o: any) => o.order_items?.some((i: any) => (i.books as any)?.publisher_id === user?.id));
+    },
+  });
+
+  const { data: borrows = [] } = useQuery({
+    queryKey: ["pub-revenue-borrows", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_borrows")
+        .select("created_at, status, books(borrow_price, publisher_id)")
+        .in("status", ["borrowed", "returned"]);
+      if (error) throw error;
+      return data.filter((b: any) => (b.books as any)?.publisher_id === user?.id);
+    },
+  });
+
+  const totalOrderRevenue = orders
+    .filter((o: any) => o.status !== "cancelled")
+    .reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
+
+  const totalBorrowRevenue = borrows.reduce((sum: number, b: any) => sum + Number((b.books as any)?.borrow_price || 0), 0);
+
+  const totalRevenue = totalOrderRevenue + totalBorrowRevenue;
+
+  const monthlyData: Record<string, { month: string; sales: number; borrows: number }> = {};
+  orders.filter((o: any) => o.status !== "cancelled").forEach((o: any) => {
+    const month = format(new Date(o.created_at), "MMM yyyy");
+    if (!monthlyData[month]) monthlyData[month] = { month, sales: 0, borrows: 0 };
+    monthlyData[month].sales += Number(o.total_amount);
+  });
+  borrows.forEach((b: any) => {
+    const month = format(new Date(b.created_at), "MMM yyyy");
+    if (!monthlyData[month]) monthlyData[month] = { month, sales: 0, borrows: 0 };
+    monthlyData[month].borrows += Number((b.books as any)?.borrow_price || 0);
+  });
+  const chartData = Object.values(monthlyData);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-heading text-xl font-semibold">My Revenue</h2>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-green-100 p-3"><DollarSign className="h-6 w-6 text-green-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Total Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-blue-100 p-3"><Package className="h-6 w-6 text-blue-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalOrderRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Sales Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-purple-100 p-3"><BookOpen className="h-6 w-6 text-purple-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalBorrowRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Borrow Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="font-heading text-lg">Monthly Revenue</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Bar dataKey="sales" fill="hsl(var(--primary))" name="Sales" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="borrows" fill="hsl(var(--accent))" name="Borrows" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -17,8 +17,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog, UserPlus, CreditCard, Banknote, Upload, X, Image } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog, UserPlus, CreditCard, Banknote, Upload, X, Image, DollarSign, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading } = useAuth();
@@ -44,12 +45,14 @@ export default function AdminDashboard() {
             <TabsTrigger value="orders"><Package className="mr-2 h-4 w-4" />Orders</TabsTrigger>
             <TabsTrigger value="borrows"><Users className="mr-2 h-4 w-4" />Borrows</TabsTrigger>
             <TabsTrigger value="users"><UserCog className="mr-2 h-4 w-4" />Users</TabsTrigger>
+            <TabsTrigger value="revenue"><TrendingUp className="mr-2 h-4 w-4" />Revenue</TabsTrigger>
           </TabsList>
           <TabsContent value="books"><AdminBooksTab /></TabsContent>
           <TabsContent value="categories"><AdminCategoriesTab /></TabsContent>
           <TabsContent value="orders"><AdminOrdersTab /></TabsContent>
           <TabsContent value="borrows"><AdminBorrowsTab /></TabsContent>
           <TabsContent value="users"><AdminUsersTab /></TabsContent>
+          <TabsContent value="revenue"><RevenueTab /></TabsContent>
         </Tabs>
       </div>
       <Footer />
@@ -61,17 +64,19 @@ function StatsCards() {
   const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [books, orders, borrows, categories] = await Promise.all([
+      const [books, orders, borrows, categories, users] = await Promise.all([
         supabase.from("books").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id", { count: "exact", head: true }),
         supabase.from("book_borrows").select("id", { count: "exact", head: true }),
         supabase.from("categories").select("id", { count: "exact", head: true }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
       ]);
       return {
         books: books.count || 0,
         orders: orders.count || 0,
         borrows: borrows.count || 0,
         categories: categories.count || 0,
+        users: users.count || 0,
       };
     },
   });
@@ -81,10 +86,11 @@ function StatsCards() {
     { label: "Categories", value: stats?.categories || 0, icon: FolderTree, color: "text-accent" },
     { label: "Orders", value: stats?.orders || 0, icon: Package, color: "text-orange-500" },
     { label: "Borrows", value: stats?.borrows || 0, icon: Users, color: "text-blue-500" },
+    { label: "Total Users", value: stats?.users || 0, icon: UserCog, color: "text-green-500" },
   ];
 
   return (
-    <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
       {items.map(({ label, value, icon: Icon, color }) => (
         <Card key={label}>
           <CardContent className="flex items-center gap-4 p-4">
@@ -221,6 +227,8 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
     category_id: book?.category_id || "",
     is_borrowable: book?.is_borrowable || false,
     is_featured: book?.is_featured || false,
+    borrow_price: book?.borrow_price?.toString() || "0",
+    borrow_policy: book?.borrow_policy || "",
   });
 
   const handleFileSelect = (file: File) => {
@@ -269,6 +277,8 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
         ...form,
         price: parseFloat(form.price),
         stock_quantity: parseInt(form.stock_quantity),
+        borrow_price: parseFloat(form.borrow_price),
+        borrow_policy: form.borrow_policy || null,
         category_id: form.category_id || null,
         publisher_id: book?.publisher_id || user!.id,
         cover_image_url: coverUrl,
@@ -356,6 +366,12 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
         <div className="flex items-center gap-2"><Switch checked={form.is_borrowable} onCheckedChange={(v) => setForm({ ...form, is_borrowable: v })} /><Label>Borrowable</Label></div>
         <div className="flex items-center gap-2"><Switch checked={form.is_featured} onCheckedChange={(v) => setForm({ ...form, is_featured: v })} /><Label>Featured</Label></div>
       </div>
+      {form.is_borrowable && (
+        <>
+          <div><Label>Borrow Price ($) — 0 for free</Label><Input type="number" step="0.01" value={form.borrow_price} onChange={(e) => setForm({ ...form, borrow_price: e.target.value })} /></div>
+          <div><Label>Borrow Policy</Label><Textarea value={form.borrow_policy} onChange={(e) => setForm({ ...form, borrow_policy: e.target.value })} rows={4} placeholder="e.g., Book must be returned intact, no stains..." /></div>
+        </>
+      )}
       <Button type="submit" className="w-full" disabled={uploading}>{uploading ? "Uploading..." : book ? "Update Book" : "Add Book"}</Button>
     </form>
   );
@@ -617,8 +633,14 @@ function AdminBorrowsTab() {
           <TableBody>
             {borrows.map((b: any) => (
               <TableRow key={b.id}>
-                <TableCell><p className="font-medium">{b.books?.title}</p><p className="text-xs text-muted-foreground">{b.books?.author}</p></TableCell>
-                <TableCell>{(b.profiles as any)?.display_name || "Unknown"}</TableCell>
+                <TableCell>
+                  <p className="font-medium">{b.books?.title}</p>
+                  <p className="text-xs text-muted-foreground">{b.books?.author}</p>
+                </TableCell>
+                <TableCell>
+                  <p>{(b.profiles as any)?.display_name || "Unknown"}</p>
+                  {b.user_message && <p className="text-xs text-muted-foreground italic mt-1">"{b.user_message}"</p>}
+                </TableCell>
                 <TableCell className="text-sm">{format(new Date(b.created_at), "MMM d, yyyy")}</TableCell>
                 <TableCell className="text-sm">{b.status === "pending" ? "—" : format(new Date(b.due_date), "MMM d, yyyy")}</TableCell>
                 <TableCell>
@@ -800,6 +822,109 @@ function AdminUsersTab() {
           </TableBody>
         </Table>
       </div>
+    </div>
+  );
+}
+
+function RevenueTab() {
+  const { data: orders = [] } = useQuery({
+    queryKey: ["admin-revenue-orders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("total_amount, created_at, status, payment_status")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: borrows = [] } = useQuery({
+    queryKey: ["admin-revenue-borrows"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_borrows")
+        .select("created_at, status, books(borrow_price)")
+        .in("status", ["borrowed", "returned"]);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const totalOrderRevenue = orders
+    .filter((o: any) => o.status !== "cancelled")
+    .reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
+
+  const totalBorrowRevenue = borrows.reduce((sum: number, b: any) => sum + Number((b.books as any)?.borrow_price || 0), 0);
+
+  const totalRevenue = totalOrderRevenue + totalBorrowRevenue;
+
+  // Monthly chart data
+  const monthlyData: Record<string, { month: string; sales: number; borrows: number }> = {};
+  orders.filter((o: any) => o.status !== "cancelled").forEach((o: any) => {
+    const month = format(new Date(o.created_at), "MMM yyyy");
+    if (!monthlyData[month]) monthlyData[month] = { month, sales: 0, borrows: 0 };
+    monthlyData[month].sales += Number(o.total_amount);
+  });
+  borrows.forEach((b: any) => {
+    const month = format(new Date(b.created_at), "MMM yyyy");
+    if (!monthlyData[month]) monthlyData[month] = { month, sales: 0, borrows: 0 };
+    monthlyData[month].borrows += Number((b.books as any)?.borrow_price || 0);
+  });
+  const chartData = Object.values(monthlyData);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-heading text-xl font-semibold">Revenue Overview</h2>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-green-100 p-3"><DollarSign className="h-6 w-6 text-green-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Total Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-blue-100 p-3"><Package className="h-6 w-6 text-blue-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalOrderRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Sales Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="rounded-lg bg-purple-100 p-3"><BookOpen className="h-6 w-6 text-purple-600" /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">${totalBorrowRevenue.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Borrow Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="font-heading text-lg">Monthly Revenue</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Bar dataKey="sales" fill="hsl(var(--primary))" name="Sales" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="borrows" fill="hsl(var(--accent))" name="Borrows" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

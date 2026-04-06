@@ -155,6 +155,11 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(book?.cover_image_url || "");
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [form, setForm] = useState({
     title: book?.title || "",
     author: book?.author || "",
@@ -165,19 +170,46 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
     category_id: book?.category_id || "",
     is_borrowable: book?.is_borrowable || false,
     is_featured: book?.is_featured || false,
-    cover_image_url: book?.cover_image_url || "",
+    borrow_price: book?.borrow_price?.toString() || "0",
+    borrow_policy: book?.borrow_policy || "",
   });
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith("image/")) { toast({ title: "Invalid file", variant: "destructive" }); return; }
+    if (file.size > 5 * 1024 * 1024) { toast({ title: "File too large", variant: "destructive" }); return; }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); }, []);
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setDragOver(true); }, []);
+  const handleDragLeave = useCallback(() => setDragOver(false), []);
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return imagePreview || null;
+    const ext = imageFile.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("book-covers").upload(fileName, imageFile);
+    if (error) throw new Error("Image upload failed: " + error.message);
+    const { data } = supabase.storage.from("book-covers").getPublicUrl(fileName);
+    return data.publicUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      ...form,
-      price: parseFloat(form.price),
-      stock_quantity: parseInt(form.stock_quantity),
-      category_id: form.category_id || null,
-      publisher_id: user!.id,
-    };
+    setUploading(true);
     try {
+      const coverUrl = await uploadImage();
+      const payload = {
+        ...form,
+        price: parseFloat(form.price),
+        stock_quantity: parseInt(form.stock_quantity),
+        borrow_price: parseFloat(form.borrow_price),
+        borrow_policy: form.borrow_policy || null,
+        category_id: form.category_id || null,
+        publisher_id: user!.id,
+        cover_image_url: coverUrl,
+      };
       if (book) {
         const { error } = await supabase.from("books").update(payload).eq("id", book.id);
         if (error) throw error;
@@ -191,6 +223,8 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
       onClose();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -204,7 +238,30 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
         <div><Label>Stock</Label><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} /></div>
       </div>
       <div><Label>ISBN</Label><Input value={form.isbn} onChange={(e) => setForm({ ...form, isbn: e.target.value })} /></div>
-      <div><Label>Cover Image URL</Label><Input value={form.cover_image_url} onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })} placeholder="https://..." /></div>
+      <div>
+        <Label>Cover Image</Label>
+        <div
+          className={`mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+          onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+          {imagePreview ? (
+            <div className="relative inline-block">
+              <img src={imagePreview} alt="Preview" className="h-32 w-auto rounded-md object-cover mx-auto" />
+              <button type="button" className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1" onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(""); }}>
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="py-4">
+              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Drag & drop or click to browse</p>
+              <p className="text-xs text-muted-foreground mt-1">Max 5MB • JPG, PNG, WebP</p>
+            </div>
+          )}
+        </div>
+      </div>
       <div>
         <Label>Category</Label>
         <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
@@ -216,7 +273,13 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
         <div className="flex items-center gap-2"><Switch checked={form.is_borrowable} onCheckedChange={(v) => setForm({ ...form, is_borrowable: v })} /><Label>Borrowable</Label></div>
         <div className="flex items-center gap-2"><Switch checked={form.is_featured} onCheckedChange={(v) => setForm({ ...form, is_featured: v })} /><Label>Featured</Label></div>
       </div>
-      <Button type="submit" className="w-full">{book ? "Update Book" : "Add Book"}</Button>
+      {form.is_borrowable && (
+        <>
+          <div><Label>Borrow Price ($) — 0 for free</Label><Input type="number" step="0.01" value={form.borrow_price} onChange={(e) => setForm({ ...form, borrow_price: e.target.value })} /></div>
+          <div><Label>Borrow Policy</Label><Textarea value={form.borrow_policy} onChange={(e) => setForm({ ...form, borrow_policy: e.target.value })} rows={4} placeholder="e.g., Book must be returned intact, no stains..." /></div>
+        </>
+      )}
+      <Button type="submit" className="w-full" disabled={uploading}>{uploading ? "Uploading..." : book ? "Update Book" : "Add Book"}</Button>
     </form>
   );
 }

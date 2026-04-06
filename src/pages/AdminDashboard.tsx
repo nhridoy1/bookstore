@@ -363,6 +363,12 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
         <div className="flex items-center gap-2"><Switch checked={form.is_borrowable} onCheckedChange={(v) => setForm({ ...form, is_borrowable: v })} /><Label>Borrowable</Label></div>
         <div className="flex items-center gap-2"><Switch checked={form.is_featured} onCheckedChange={(v) => setForm({ ...form, is_featured: v })} /><Label>Featured</Label></div>
       </div>
+      {form.is_borrowable && (
+        <>
+          <div><Label>Borrow Price ($) — 0 for free</Label><Input type="number" step="0.01" value={form.borrow_price} onChange={(e) => setForm({ ...form, borrow_price: e.target.value })} /></div>
+          <div><Label>Borrow Policy</Label><Textarea value={form.borrow_policy} onChange={(e) => setForm({ ...form, borrow_policy: e.target.value })} rows={4} placeholder="e.g., Book must be returned intact, no stains..." /></div>
+        </>
+      )}
       <Button type="submit" className="w-full" disabled={uploading}>{uploading ? "Uploading..." : book ? "Update Book" : "Add Book"}</Button>
     </form>
   );

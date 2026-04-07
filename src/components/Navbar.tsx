@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, User, LogOut, BookOpen, LayoutDashboard, Menu, X, Shield, Settings, Package, Library, Heart } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -29,6 +30,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
+          {user && <NotificationBell />}
           {user && (
             <Button variant="ghost" size="icon" className="relative" onClick={() => navigate("/cart")}>
               <ShoppingCart className="h-5 w-5" />

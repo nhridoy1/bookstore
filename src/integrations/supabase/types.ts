@@ -21,6 +21,7 @@ export type Database = {
           borrow_date: string
           borrow_days: number | null
           created_at: string
+          desired_days: number | null
           due_date: string
           id: string
           return_date: string | null
@@ -35,6 +36,7 @@ export type Database = {
           borrow_date?: string
           borrow_days?: number | null
           created_at?: string
+          desired_days?: number | null
           due_date?: string
           id?: string
           return_date?: string | null
@@ -49,6 +51,7 @@ export type Database = {
           borrow_date?: string
           borrow_days?: number | null
           created_at?: string
+          desired_days?: number | null
           due_date?: string
           id?: string
           return_date?: string | null
@@ -195,6 +198,36 @@ export type Database = {
           image_url?: string | null
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          title?: string
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }

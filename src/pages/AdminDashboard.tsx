@@ -577,6 +577,7 @@ function AdminBorrowsTab() {
     const now = new Date();
     const days = parseInt(borrowDays) || 14;
     const dueDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    const borrow = borrows.find((b: any) => b.id === id);
     const { error } = await supabase.from("book_borrows").update({
       status: "borrowed",
       borrow_date: now.toISOString(),
@@ -585,6 +586,15 @@ function AdminBorrowsTab() {
       borrow_days: days,
     }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    // Send notification to user
+    if (borrow) {
+      await supabase.from("notifications").insert({
+        user_id: borrow.user_id,
+        title: "Borrow Request Approved",
+        message: `Your request to borrow "${borrow.books?.title}" has been approved for ${days} days. Due date: ${format(dueDate, "MMM d, yyyy")}`,
+        type: "borrow",
+      } as any);
+    }
     queryClient.invalidateQueries({ queryKey: ["admin-borrows"] });
     toast({ title: `Borrow approved for ${days} days` });
     setApproveId(null);
@@ -592,8 +602,17 @@ function AdminBorrowsTab() {
   };
 
   const rejectBorrow = async (id: string) => {
+    const borrow = borrows.find((b: any) => b.id === id);
     const { error } = await supabase.from("book_borrows").update({ status: "rejected" }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    if (borrow) {
+      await supabase.from("notifications").insert({
+        user_id: borrow.user_id,
+        title: "Borrow Request Rejected",
+        message: `Your request to borrow "${borrow.books?.title}" has been rejected.`,
+        type: "borrow",
+      } as any);
+    }
     queryClient.invalidateQueries({ queryKey: ["admin-borrows"] });
     toast({ title: "Borrow request rejected" });
   };
@@ -625,6 +644,7 @@ function AdminBorrowsTab() {
               <TableHead>Book</TableHead>
               <TableHead>Borrower</TableHead>
               <TableHead>Requested</TableHead>
+              <TableHead>Desired Days</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -642,6 +662,7 @@ function AdminBorrowsTab() {
                   {b.user_message && <p className="text-xs text-muted-foreground italic mt-1">"{b.user_message}"</p>}
                 </TableCell>
                 <TableCell className="text-sm">{format(new Date(b.created_at), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm font-medium">{(b as any).desired_days ? `${(b as any).desired_days} days` : "—"}</TableCell>
                 <TableCell className="text-sm">{b.status === "pending" ? "—" : format(new Date(b.due_date), "MMM d, yyyy")}</TableCell>
                 <TableCell>
                   <Badge variant={statusColor(b.status)}>{b.status}</Badge>
@@ -694,6 +715,12 @@ function AdminUsersTab() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignUserId, setAssignUserId] = useState("");
   const [assignRole, setAssignRole] = useState<string>("publisher");
+  const [editUser, setEditUser] = useState<any>(null);
+  const [editName, setEditName] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newName, setNewName] = useState("");
 
   const { data: users = [] } = useQuery({
     queryKey: ["admin-users"],
@@ -747,43 +774,111 @@ function AdminUsersTab() {
     }
   };
 
+  const handleUpdateUser = async () => {
+    if (!editUser) return;
+    const { error } = await supabase.from("profiles").update({ display_name: editName }).eq("user_id", editUser.user_id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    toast({ title: "User updated" });
+    setEditUser(null);
+  };
+
+  const handleDeleteUser = async (userId: string, displayName: string) => {
+    if (!confirm(`Delete user "${displayName}"? This will remove their profile and roles.`)) return;
+    // Delete roles first, then profile
+    await supabase.from("user_roles").delete().eq("user_id", userId);
+    const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+    toast({ title: "User deleted" });
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: newEmail,
+        password: newPassword,
+        options: { data: { full_name: newName } },
+      });
+      if (error) throw error;
+      toast({ title: "User created!", description: `${newEmail} has been registered.` });
+      setCreateOpen(false);
+      setNewEmail("");
+      setNewPassword("");
+      setNewName("");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
         <h2 className="font-heading text-xl font-semibold">Users & Roles ({users.length})</h2>
-        <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-          <DialogTrigger asChild>
-            <Button><UserPlus className="mr-2 h-4 w-4" />Assign Role</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle className="font-heading">Assign Role to User</DialogTitle></DialogHeader>
-            <form onSubmit={handleAssignRole} className="space-y-4">
-              <div>
-                <Label>Select User</Label>
-                <Select value={assignUserId} onValueChange={setAssignUserId}>
-                  <SelectTrigger><SelectValue placeholder="Choose a user..." /></SelectTrigger>
-                  <SelectContent>
-                    {users.map((u: any) => (
-                      <SelectItem key={u.user_id} value={u.user_id}>{u.display_name || "Unknown"}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Role</Label>
-                <Select value={assignRole} onValueChange={setAssignRole}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="publisher">Publisher</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" className="w-full">Assign Role</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline"><Plus className="mr-2 h-4 w-4" />Create User</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle className="font-heading">Create New User</DialogTitle></DialogHeader>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div><Label>Full Name</Label><Input value={newName} onChange={(e) => setNewName(e.target.value)} required /></div>
+                <div><Label>Email</Label><Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required /></div>
+                <div><Label>Password</Label><Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} /></div>
+                <Button type="submit" className="w-full">Create User</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+            <DialogTrigger asChild>
+              <Button><UserPlus className="mr-2 h-4 w-4" />Assign Role</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle className="font-heading">Assign Role to User</DialogTitle></DialogHeader>
+              <form onSubmit={handleAssignRole} className="space-y-4">
+                <div>
+                  <Label>Select User</Label>
+                  <Select value={assignUserId} onValueChange={setAssignUserId}>
+                    <SelectTrigger><SelectValue placeholder="Choose a user..." /></SelectTrigger>
+                    <SelectContent>
+                      {users.map((u: any) => (
+                        <SelectItem key={u.user_id} value={u.user_id}>{u.display_name || "Unknown"}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Role</Label>
+                  <Select value={assignRole} onValueChange={setAssignRole}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="publisher">Publisher</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" className="w-full">Assign Role</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      {/* Edit user dialog */}
+      <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) setEditUser(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="font-heading">Edit User</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Display Name</Label><Input value={editName} onChange={(e) => setEditName(e.target.value)} /></div>
+            <Button className="w-full" onClick={handleUpdateUser}>Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="rounded-lg border overflow-hidden">
         <Table>
           <TableHeader>
@@ -820,11 +915,19 @@ function AdminUsersTab() {
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{format(new Date(u.created_at), "MMM d, yyyy")}</TableCell>
                 <TableCell className="text-right">
-                  {u.user_roles?.filter((r: any) => r.role !== "user").map((r: any) => (
-                    <Button key={r.role} variant="ghost" size="sm" className="text-xs text-destructive" onClick={() => removeRole(u.user_id, r.role)}>
-                      Remove {r.role}
+                  <div className="flex items-center gap-1 justify-end">
+                    <Button variant="ghost" size="icon" onClick={() => { setEditUser(u); setEditName(u.display_name || ""); }}>
+                      <Pencil className="h-4 w-4" />
                     </Button>
-                  ))}
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(u.user_id, u.display_name || "Unknown")}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                    {u.user_roles?.filter((r: any) => r.role !== "user").map((r: any) => (
+                      <Button key={r.role} variant="ghost" size="sm" className="text-xs text-destructive" onClick={() => removeRole(u.user_id, r.role)}>
+                        Remove {r.role}
+                      </Button>
+                    ))}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import BookCard from "@/components/BookCard";
+import BookRecommendations from "@/components/BookRecommendations";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import heroImage from "@/assets/hero-bookstore.jpg";
@@ -117,6 +118,9 @@ export default function Index() {
           </div>
         </section>
       )}
+
+      {/* AI Recommendations */}
+      <BookRecommendations />
 
       {/* Latest Books */}
       {latestBooks.length > 0 && (

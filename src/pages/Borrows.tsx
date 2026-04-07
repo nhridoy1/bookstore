@@ -47,8 +47,13 @@ export default function Borrows() {
                     <p className="text-xs text-muted-foreground">
                       {borrow.status === "pending" ? "Awaiting approval" : 
                        borrow.status === "rejected" ? "Request rejected" :
-                       `Due: ${format(new Date(borrow.due_date), "MMM d, yyyy")}`}
+                       `Due: ${format(new Date(borrow.due_date), "MMM d, yyyy")}${borrow.borrow_days ? ` (${borrow.borrow_days} days)` : ""}`}
                     </p>
+                    {borrow.status === "borrowed" && borrow.approved_at && (
+                      <p className="text-xs text-green-600 font-medium">
+                        Approved — You have {borrow.borrow_days || 14} days to return
+                      </p>
+                    )}
                   </div>
                   <Badge variant={
                     borrow.status === "returned" ? "secondary" : 

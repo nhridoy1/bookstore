@@ -577,6 +577,7 @@ function AdminBorrowsTab() {
     const now = new Date();
     const days = parseInt(borrowDays) || 14;
     const dueDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    const borrow = borrows.find((b: any) => b.id === id);
     const { error } = await supabase.from("book_borrows").update({
       status: "borrowed",
       borrow_date: now.toISOString(),
@@ -585,6 +586,15 @@ function AdminBorrowsTab() {
       borrow_days: days,
     }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    // Send notification to user
+    if (borrow) {
+      await supabase.from("notifications").insert({
+        user_id: borrow.user_id,
+        title: "Borrow Request Approved",
+        message: `Your request to borrow "${borrow.books?.title}" has been approved for ${days} days. Due date: ${format(dueDate, "MMM d, yyyy")}`,
+        type: "borrow",
+      } as any);
+    }
     queryClient.invalidateQueries({ queryKey: ["admin-borrows"] });
     toast({ title: `Borrow approved for ${days} days` });
     setApproveId(null);
@@ -592,8 +602,17 @@ function AdminBorrowsTab() {
   };
 
   const rejectBorrow = async (id: string) => {
+    const borrow = borrows.find((b: any) => b.id === id);
     const { error } = await supabase.from("book_borrows").update({ status: "rejected" }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    if (borrow) {
+      await supabase.from("notifications").insert({
+        user_id: borrow.user_id,
+        title: "Borrow Request Rejected",
+        message: `Your request to borrow "${borrow.books?.title}" has been rejected.`,
+        type: "borrow",
+      } as any);
+    }
     queryClient.invalidateQueries({ queryKey: ["admin-borrows"] });
     toast({ title: "Borrow request rejected" });
   };

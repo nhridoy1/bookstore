@@ -23,6 +23,7 @@ export default function BookDetail() {
   const queryClient = useQueryClient();
   const [borrowDialogOpen, setBorrowDialogOpen] = useState(false);
   const [borrowMessage, setBorrowMessage] = useState("");
+  const [desiredDays, setDesiredDays] = useState("14");
   const [policyAccepted, setPolicyAccepted] = useState(false);
 
   const { data: book, isLoading } = useQuery({
@@ -79,7 +80,8 @@ export default function BookDetail() {
         book_id: book.id,
         status: "pending",
         user_message: borrowMessage || null,
-      });
+        desired_days: parseInt(desiredDays) || 14,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -183,11 +185,21 @@ export default function BookDetail() {
               <p className="text-sm font-medium">Borrow fee: <span className="text-primary">${Number(book.borrow_price).toFixed(2)}</span></p>
             )}
             <div>
+              <label className="text-sm font-medium">Desired borrow duration (days)</label>
+              <Input
+                type="number"
+                min="1"
+                value={desiredDays}
+                onChange={(e) => setDesiredDays(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
               <label className="text-sm font-medium">Message (optional)</label>
               <Textarea
                 value={borrowMessage}
                 onChange={(e) => setBorrowMessage(e.target.value)}
-                placeholder="How long do you need? Any notes for the admin..."
+                placeholder="Any notes for the admin..."
                 rows={3}
                 className="mt-1"
               />

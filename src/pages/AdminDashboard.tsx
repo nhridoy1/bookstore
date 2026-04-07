@@ -625,6 +625,7 @@ function AdminBorrowsTab() {
               <TableHead>Book</TableHead>
               <TableHead>Borrower</TableHead>
               <TableHead>Requested</TableHead>
+              <TableHead>Desired Days</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -642,6 +643,7 @@ function AdminBorrowsTab() {
                   {b.user_message && <p className="text-xs text-muted-foreground italic mt-1">"{b.user_message}"</p>}
                 </TableCell>
                 <TableCell className="text-sm">{format(new Date(b.created_at), "MMM d, yyyy")}</TableCell>
+                <TableCell className="text-sm font-medium">{(b as any).desired_days ? `${(b as any).desired_days} days` : "—"}</TableCell>
                 <TableCell className="text-sm">{b.status === "pending" ? "—" : format(new Date(b.due_date), "MMM d, yyyy")}</TableCell>
                 <TableCell>
                   <Badge variant={statusColor(b.status)}>{b.status}</Badge>

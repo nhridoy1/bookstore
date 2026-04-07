@@ -698,12 +698,21 @@ function AdminUsersTab() {
   const { data: users = [] } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*, user_roles(role)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("*"),
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (rolesRes.error) throw rolesRes.error;
+      const rolesByUser: Record<string, any[]> = {};
+      rolesRes.data.forEach((r: any) => {
+        if (!rolesByUser[r.user_id]) rolesByUser[r.user_id] = [];
+        rolesByUser[r.user_id].push(r);
+      });
+      return profilesRes.data.map((p: any) => ({
+        ...p,
+        user_roles: rolesByUser[p.user_id] || [],
+      }));
     },
   });
 

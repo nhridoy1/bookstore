@@ -21,6 +21,7 @@ export type Database = {
           borrow_date: string
           borrow_days: number | null
           created_at: string
+          desired_days: number | null
           due_date: string
           id: string
           return_date: string | null
@@ -35,6 +36,7 @@ export type Database = {
           borrow_date?: string
           borrow_days?: number | null
           created_at?: string
+          desired_days?: number | null
           due_date?: string
           id?: string
           return_date?: string | null
@@ -49,6 +51,7 @@ export type Database = {
           borrow_date?: string
           borrow_days?: number | null
           created_at?: string
+          desired_days?: number | null
           due_date?: string
           id?: string
           return_date?: string | null

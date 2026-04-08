@@ -124,13 +124,34 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={avatarUrl || user.user_metadata?.avatar_url || user.user_metadata?.picture} />
-                <AvatarFallback className="text-lg">{(displayName || user.email || "U")[0].toUpperCase()}</AvatarFallback>
-              </Avatar>
+              <div className="relative group">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={avatarUrl || user.user_metadata?.avatar_url || user.user_metadata?.picture} />
+                  <AvatarFallback className="text-lg">{(displayName || user.email || "U")[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <label
+                  htmlFor="avatar-upload"
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  {uploading ? (
+                    <Upload className="h-5 w-5 text-white animate-pulse" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
+                </label>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={uploading}
+                />
+              </div>
               <div>
                 <p className="font-heading font-semibold text-lg">{displayName || user.user_metadata?.full_name || "User"}</p>
                 <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {user.email}</p>
+                <p className="text-xs text-muted-foreground mt-1">Hover avatar to upload a photo</p>
               </div>
             </div>
           </CardContent>

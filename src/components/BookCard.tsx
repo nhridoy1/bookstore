@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, BookOpen } from "lucide-react";
+import { ShoppingCart, BookOpen, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 
-interface BookCardProps {
+export interface BookCardProps {
   id: string;
   title: string;
   author: string;
@@ -14,9 +14,11 @@ interface BookCardProps {
   is_borrowable: boolean;
   stock_quantity: number;
   category_name?: string;
+  avgRating?: number;
+  reviewCount?: number;
 }
 
-export default function BookCard({ id, title, author, price, cover_image_url, is_borrowable, stock_quantity, category_name }: BookCardProps) {
+export default function BookCard({ id, title, author, price, cover_image_url, is_borrowable, stock_quantity, category_name, avgRating, reviewCount }: BookCardProps) {
   const { user } = useAuth();
   const { addToCart } = useCart();
 
@@ -39,6 +41,14 @@ export default function BookCard({ id, title, author, price, cover_image_url, is
           <h3 className="font-heading font-semibold text-card-foreground line-clamp-1 hover:text-primary transition-colors">{title}</h3>
         </Link>
         <p className="text-sm text-muted-foreground">{author}</p>
+        {avgRating !== undefined && (
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <Star key={s} className={`h-3 w-3 ${s <= Math.round(avgRating) ? "fill-primary text-primary" : "text-muted-foreground/30"}`} />
+            ))}
+            <span className="text-xs text-muted-foreground ml-1">({reviewCount})</span>
+          </div>
+        )}
         <div className="flex items-center justify-between pt-1">
           <span className="font-heading text-lg font-bold text-primary">${price.toFixed(2)}</span>
           <div className="flex gap-1">

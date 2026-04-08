@@ -19,6 +19,7 @@ export default function Books() {
   const [selectedCategory, setSelectedCategory] = useState(categoryFilter || "all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const [sortBy, setSortBy] = useState("newest");
+  const [minRating, setMinRating] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data: categories = [] } = useQuery({
@@ -43,15 +44,44 @@ export default function Books() {
     },
   });
 
+  // Fetch average ratings for all books
+  const { data: ratingsMap = {} } = useQuery({
+    queryKey: ["book-ratings-avg"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_reviews")
+        .select("book_id, rating");
+      if (error) throw error;
+      const map: Record<string, { avg: number; count: number }> = {};
+      for (const r of data || []) {
+        if (!map[r.book_id]) map[r.book_id] = { avg: 0, count: 0 };
+        map[r.book_id].count++;
+        map[r.book_id].avg += r.rating;
+      }
+      for (const id in map) {
+        map[id].avg = map[id].avg / map[id].count;
+      }
+      return map;
+    },
+  });
+
   const sortedBooks = useMemo(() => {
-    const sorted = [...books];
-    switch (sortBy) {
-      case "price-low": return sorted.sort((a, b) => a.price - b.price);
-      case "price-high": return sorted.sort((a, b) => b.price - a.price);
-      case "title": return sorted.sort((a, b) => a.title.localeCompare(b.title));
-      default: return sorted;
+    let filtered = [...books];
+    // Filter by minimum rating
+    if (minRating > 0) {
+      filtered = filtered.filter((b) => {
+        const r = ratingsMap[b.id];
+        return r && r.avg >= minRating;
+      });
     }
-  }, [books, sortBy]);
+    switch (sortBy) {
+      case "price-low": return filtered.sort((a, b) => a.price - b.price);
+      case "price-high": return filtered.sort((a, b) => b.price - a.price);
+      case "title": return filtered.sort((a, b) => a.title.localeCompare(b.title));
+      case "rating-high": return filtered.sort((a, b) => (ratingsMap[b.id]?.avg || 0) - (ratingsMap[a.id]?.avg || 0));
+      default: return filtered;
+    }
+  }, [books, sortBy, minRating, ratingsMap]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -78,6 +108,7 @@ export default function Books() {
               <SelectItem value="price-low">Price: Low to High</SelectItem>
               <SelectItem value="price-high">Price: High to Low</SelectItem>
               <SelectItem value="title">Title A–Z</SelectItem>
+              <SelectItem value="rating-high">Highest Rated</SelectItem>
             </SelectContent>
           </Select>
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
@@ -105,6 +136,26 @@ export default function Books() {
                   <span className="text-xs text-muted-foreground">$500</span>
                 </div>
               </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Minimum Rating: {minRating > 0 ? `${minRating}+ stars` : "Any"}</label>
+                <div className="flex items-center gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((r) => (
+                    <Button
+                      key={r}
+                      variant={minRating === r ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setMinRating(r)}
+                      className="gap-1"
+                    >
+                      {r === 0 ? "Any" : (
+                        <>
+                          {r} <Star className="h-3 w-3 fill-current" />
+                        </>
+                      )}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -112,11 +163,19 @@ export default function Books() {
           <div className="grid gap-6 grid-cols-2 md:grid-cols-4">
             {[...Array(8)].map((_, i) => <div key={i} className="h-80 rounded-lg bg-muted animate-pulse" />)}
           </div>
-        ) : books.length === 0 ? (
+        ) : sortedBooks.length === 0 ? (
           <p className="text-center text-muted-foreground py-16">No books found.</p>
         ) : (
           <div className="grid gap-6 grid-cols-2 md:grid-cols-4">
-            {sortedBooks.map((book) => <BookCard key={book.id} {...book} category_name={(book.categories as any)?.name} />)}
+            {sortedBooks.map((book) => (
+              <BookCard
+                key={book.id}
+                {...book}
+                category_name={(book.categories as any)?.name}
+                avgRating={ratingsMap[book.id]?.avg}
+                reviewCount={ratingsMap[book.id]?.count}
+              />
+            ))}
           </div>
         )}
       </div>

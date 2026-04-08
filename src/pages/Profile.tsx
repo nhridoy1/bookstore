@@ -168,10 +168,6 @@ export default function Profile() {
                 <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" />
               </div>
               <div>
-                <Label htmlFor="avatarUrl">Avatar URL</Label>
-                <Input id="avatarUrl" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." />
-              </div>
-              <div>
                 <Label htmlFor="profileAddress">Present Address</Label>
                 <Input id="profileAddress" value={profileAddress} onChange={(e) => setProfileAddress(e.target.value)} placeholder="123 Main St, City" />
               </div>

@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { User, Mail, Save } from "lucide-react";
+import { User, Mail, Save, Upload, Camera } from "lucide-react";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -23,6 +23,39 @@ export default function Profile() {
   const [profileAddress, setProfileAddress] = useState("");
   const [profileCountry, setProfileCountry] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please select an image file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image must be under 5MB", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      const url = `${publicUrl}?t=${Date.now()}`;
+      setAvatarUrl(url);
+      await supabase.from("profiles").update({ avatar_url: url } as any).eq("user_id", user.id);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast({ title: "Avatar uploaded!" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],

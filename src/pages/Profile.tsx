@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { User, Mail, Save } from "lucide-react";
+import { User, Mail, Save, Upload, Camera } from "lucide-react";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -23,6 +23,39 @@ export default function Profile() {
   const [profileAddress, setProfileAddress] = useState("");
   const [profileCountry, setProfileCountry] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please select an image file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image must be under 5MB", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      const url = `${publicUrl}?t=${Date.now()}`;
+      setAvatarUrl(url);
+      await supabase.from("profiles").update({ avatar_url: url } as any).eq("user_id", user.id);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast({ title: "Avatar uploaded!" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -91,13 +124,34 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={avatarUrl || user.user_metadata?.avatar_url || user.user_metadata?.picture} />
-                <AvatarFallback className="text-lg">{(displayName || user.email || "U")[0].toUpperCase()}</AvatarFallback>
-              </Avatar>
+              <div className="relative group">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={avatarUrl || user.user_metadata?.avatar_url || user.user_metadata?.picture} />
+                  <AvatarFallback className="text-lg">{(displayName || user.email || "U")[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <label
+                  htmlFor="avatar-upload"
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  {uploading ? (
+                    <Upload className="h-5 w-5 text-white animate-pulse" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
+                </label>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={uploading}
+                />
+              </div>
               <div>
                 <p className="font-heading font-semibold text-lg">{displayName || user.user_metadata?.full_name || "User"}</p>
                 <p className="text-sm text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {user.email}</p>
+                <p className="text-xs text-muted-foreground mt-1">Hover avatar to upload a photo</p>
               </div>
             </div>
           </CardContent>
@@ -112,10 +166,6 @@ export default function Profile() {
               <div>
                 <Label htmlFor="displayName">Display Name</Label>
                 <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" />
-              </div>
-              <div>
-                <Label htmlFor="avatarUrl">Avatar URL</Label>
-                <Input id="avatarUrl" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." />
               </div>
               <div>
                 <Label htmlFor="profileAddress">Present Address</Label>

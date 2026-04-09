@@ -77,6 +77,51 @@ export type Database = {
           },
         ]
       }
+      book_comments: {
+        Row: {
+          book_id: string
+          content: string
+          created_at: string
+          id: string
+          parent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          content: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_comments_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "book_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       book_reviews: {
         Row: {
           book_id: string

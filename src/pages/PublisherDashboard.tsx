@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, Upload, X, DollarSign, TrendingUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, BookOpen, TrendingUp, Upload, X, DollarSign, Star, Users } from "lucide-react";
 import { format } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -34,25 +34,76 @@ export default function PublisherDashboard() {
           <BookOpen className="h-8 w-8 text-primary" />
           <div>
             <h1 className="font-heading text-3xl font-bold">Publisher Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Manage your books, categories, and view orders</p>
+            <p className="text-sm text-muted-foreground">Manage your published books, view orders & ratings</p>
           </div>
         </div>
-        <Tabs defaultValue="my-books">
+        <PublisherStats userId={user.id} />
+        <Tabs defaultValue="my-books" className="mt-8">
           <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="my-books"><BookOpen className="mr-2 h-4 w-4" />My Books</TabsTrigger>
-            <TabsTrigger value="categories"><FolderTree className="mr-2 h-4 w-4" />Categories</TabsTrigger>
             <TabsTrigger value="orders"><Package className="mr-2 h-4 w-4" />Orders</TabsTrigger>
             <TabsTrigger value="borrows"><Users className="mr-2 h-4 w-4" />Borrows</TabsTrigger>
+            <TabsTrigger value="ratings"><Star className="mr-2 h-4 w-4" />Ratings</TabsTrigger>
             <TabsTrigger value="revenue"><TrendingUp className="mr-2 h-4 w-4" />Revenue</TabsTrigger>
           </TabsList>
           <TabsContent value="my-books"><PublisherBooksTab /></TabsContent>
-          <TabsContent value="categories"><PublisherCategoriesTab /></TabsContent>
           <TabsContent value="orders"><PublisherOrdersTab /></TabsContent>
           <TabsContent value="borrows"><PublisherBorrowsTab /></TabsContent>
+          <TabsContent value="ratings"><PublisherRatingsTab /></TabsContent>
           <TabsContent value="revenue"><PublisherRevenueTab /></TabsContent>
         </Tabs>
       </div>
       <Footer />
+    </div>
+  );
+}
+
+function PublisherStats({ userId }: { userId: string }) {
+  const { data: stats } = useQuery({
+    queryKey: ["publisher-stats", userId],
+    queryFn: async () => {
+      const { data: books } = await supabase.from("books").select("id").eq("publisher_id", userId);
+      const bookIds = books?.map(b => b.id) || [];
+      
+      let orderCount = 0;
+      let borrowCount = 0;
+      let reviewCount = 0;
+      
+      if (bookIds.length > 0) {
+        const [ordersRes, borrowsRes, reviewsRes] = await Promise.all([
+          supabase.from("order_items").select("id", { count: "exact", head: true }).in("book_id", bookIds),
+          supabase.from("book_borrows").select("id", { count: "exact", head: true }).in("book_id", bookIds),
+          supabase.from("book_reviews").select("id", { count: "exact", head: true }).in("book_id", bookIds),
+        ]);
+        orderCount = ordersRes.count || 0;
+        borrowCount = borrowsRes.count || 0;
+        reviewCount = reviewsRes.count || 0;
+      }
+      
+      return { books: bookIds.length, orders: orderCount, borrows: borrowCount, reviews: reviewCount };
+    },
+  });
+
+  const items = [
+    { label: "My Books", value: stats?.books || 0, icon: BookOpen, color: "text-primary" },
+    { label: "Orders", value: stats?.orders || 0, icon: Package, color: "text-orange-500" },
+    { label: "Borrows", value: stats?.borrows || 0, icon: Users, color: "text-blue-500" },
+    { label: "Reviews", value: stats?.reviews || 0, icon: Star, color: "text-yellow-500" },
+  ];
+
+  return (
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+      {items.map(({ label, value, icon: Icon, color }) => (
+        <Card key={label}>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="rounded-lg bg-muted p-3"><Icon className={`h-6 w-6 ${color}`} /></div>
+            <div>
+              <p className="text-2xl font-heading font-bold">{value}</p>
+              <p className="text-xs text-muted-foreground">{label}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
@@ -284,73 +335,23 @@ function PubBookForm({ book, categories, onClose }: { book: any; categories: any
   );
 }
 
-function PublisherCategoriesTab() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("categories").select("*").order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { error } = await supabase.from("categories").insert({ name, description: desc || null });
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    queryClient.invalidateQueries({ queryKey: ["categories"] });
-    toast({ title: "Category added" });
-    setName(""); setDesc(""); setOpen(false);
-  };
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="font-heading text-xl font-semibold">Categories</h2>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Add Category</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle className="font-heading">Add Category</DialogTitle></DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} required /></div>
-              <div><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
-              <Button type="submit" className="w-full">Add Category</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-      <div className="space-y-3">
-        {categories.map((cat) => (
-          <Card key={cat.id}>
-            <CardContent className="flex items-center justify-between p-4">
-              <div><h3 className="font-semibold">{cat.name}</h3>{cat.description && <p className="text-sm text-muted-foreground">{cat.description}</p>}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function PublisherOrdersTab() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: orders = [] } = useQuery({
-    queryKey: ["publisher-orders"],
+    queryKey: ["publisher-orders", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("*, order_items(*, books(title)), profiles(display_name)")
+        .select("*, order_items(*, books(title, publisher_id)), profiles(display_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      // Only show orders that contain at least one book by this publisher
+      return data.filter((o: any) =>
+        o.order_items?.some((i: any) => (i.books as any)?.publisher_id === user?.id)
+      );
     },
   });
 
@@ -363,52 +364,60 @@ function PublisherOrdersTab() {
 
   return (
     <div>
-      <h2 className="font-heading text-xl font-semibold mb-4">Process Orders ({orders.length})</h2>
+      <h2 className="font-heading text-xl font-semibold mb-4">Orders for My Books ({orders.length})</h2>
       <div className="space-y-3">
-        {orders.map((order: any) => (
-          <Card key={order.id}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
-                  <p className="text-sm text-muted-foreground">{(order.profiles as any)?.display_name} · {format(new Date(order.created_at), "MMM d, yyyy")}</p>
+        {orders.map((order: any) => {
+          const myItems = order.order_items?.filter((i: any) => (i.books as any)?.publisher_id === user?.id) || [];
+          return (
+            <Card key={order.id}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
+                    <p className="text-sm text-muted-foreground">{(order.profiles as any)?.display_name} · {format(new Date(order.created_at), "MMM d, yyyy")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      My items: {myItems.map((i: any) => `${i.books?.title} ×${i.quantity}`).join(", ")}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge>{order.status}</Badge>
+                    <p className="font-bold text-primary mt-1">${Number(order.total_amount).toFixed(2)}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <Badge>{order.status}</Badge>
-                  <p className="font-bold text-primary mt-1">${Number(order.total_amount).toFixed(2)}</p>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {["pending", "processing", "shipped", "delivered"].map((s) => (
+                    <Button key={s} variant={order.status === s ? "default" : "outline"} size="sm" onClick={() => updateStatus(order.id, s)} className="text-xs capitalize">
+                      {s}
+                    </Button>
+                  ))}
                 </div>
-              </div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {["pending", "processing", "shipped", "delivered"].map((s) => (
-                  <Button key={s} variant={order.status === s ? "default" : "outline"} size="sm" onClick={() => updateStatus(order.id, s)} className="text-xs capitalize">
-                    {s}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {orders.length === 0 && <p className="text-center text-muted-foreground py-8">No orders yet.</p>}
+              </CardContent>
+            </Card>
+          );
+        })}
+        {orders.length === 0 && <p className="text-center text-muted-foreground py-8">No orders for your books yet.</p>}
       </div>
     </div>
   );
 }
 
 function PublisherBorrowsTab() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [approveId, setApproveId] = useState<string | null>(null);
   const [borrowDays, setBorrowDays] = useState("14");
 
   const { data: borrows = [] } = useQuery({
-    queryKey: ["publisher-borrows"],
+    queryKey: ["publisher-borrows", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("book_borrows")
-        .select("*, books(title, author), profiles(display_name)")
+        .select("*, books(title, author, publisher_id), profiles(display_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      // Only borrows for this publisher's books
+      return data.filter((b: any) => (b.books as any)?.publisher_id === user?.id);
     },
   });
 
@@ -416,6 +425,7 @@ function PublisherBorrowsTab() {
     const now = new Date();
     const days = parseInt(borrowDays) || 14;
     const dueDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    const borrow = borrows.find((b: any) => b.id === id);
     const { error } = await supabase.from("book_borrows").update({
       status: "borrowed",
       borrow_date: now.toISOString(),
@@ -424,6 +434,14 @@ function PublisherBorrowsTab() {
       borrow_days: days,
     }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    if (borrow) {
+      await supabase.from("notifications").insert({
+        user_id: borrow.user_id,
+        title: "Borrow Request Approved",
+        message: `Your request to borrow "${borrow.books?.title}" has been approved for ${days} days. Due date: ${format(dueDate, "MMM d, yyyy")}`,
+        type: "borrow",
+      } as any);
+    }
     queryClient.invalidateQueries({ queryKey: ["publisher-borrows"] });
     toast({ title: `Borrow approved for ${days} days` });
     setApproveId(null);
@@ -431,8 +449,17 @@ function PublisherBorrowsTab() {
   };
 
   const rejectBorrow = async (id: string) => {
+    const borrow = borrows.find((b: any) => b.id === id);
     const { error } = await supabase.from("book_borrows").update({ status: "rejected" }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    if (borrow) {
+      await supabase.from("notifications").insert({
+        user_id: borrow.user_id,
+        title: "Borrow Request Rejected",
+        message: `Your request to borrow "${borrow.books?.title}" has been rejected.`,
+        type: "borrow",
+      } as any);
+    }
     queryClient.invalidateQueries({ queryKey: ["publisher-borrows"] });
     toast({ title: "Borrow request rejected" });
   };
@@ -448,50 +475,131 @@ function PublisherBorrowsTab() {
 
   return (
     <div>
-      <h2 className="font-heading text-xl font-semibold mb-4">Manage Borrows ({borrows.length})</h2>
+      <h2 className="font-heading text-xl font-semibold mb-4">Borrows for My Books ({borrows.length})</h2>
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Book</TableHead>
+              <TableHead>Borrower</TableHead>
+              <TableHead>Desired Days</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {borrows.map((b: any) => (
+              <TableRow key={b.id}>
+                <TableCell>
+                  <p className="font-medium">{b.books?.title}</p>
+                  <p className="text-xs text-muted-foreground">{b.books?.author}</p>
+                </TableCell>
+                <TableCell>
+                  <p>{(b.profiles as any)?.display_name || "Unknown"}</p>
+                  {b.user_message && <p className="text-xs text-muted-foreground italic">"{b.user_message}"</p>}
+                </TableCell>
+                <TableCell className="font-medium">{b.desired_days ? `${b.desired_days} days` : "—"}</TableCell>
+                <TableCell>
+                  <Badge variant={
+                    b.status === "returned" ? "secondary" :
+                    b.status === "overdue" || b.status === "rejected" ? "destructive" :
+                    b.status === "pending" ? "outline" : "default"
+                  }>{b.status}</Badge>
+                  {b.status === "borrowed" && b.due_date && (
+                    <p className="text-xs text-muted-foreground mt-1">Due: {format(new Date(b.due_date), "MMM d, yyyy")}</p>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  {b.status === "pending" && (
+                    <div className="flex items-center gap-2 justify-end">
+                      {approveId === b.id ? (
+                        <>
+                          <Input type="number" min="1" value={borrowDays} onChange={(e) => setBorrowDays(e.target.value)} className="w-20 h-8 text-xs" />
+                          <span className="text-xs text-muted-foreground">days</span>
+                          <Button size="sm" onClick={() => approveBorrow(b.id)}>Confirm</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setApproveId(null)}>Cancel</Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button size="sm" onClick={() => { setApproveId(b.id); setBorrowDays(b.desired_days?.toString() || "14"); }}>Approve</Button>
+                          <Button size="sm" variant="destructive" onClick={() => rejectBorrow(b.id)}>Reject</Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {b.status === "borrowed" && (
+                    <div className="flex gap-1 justify-end">
+                      <Button size="sm" variant="outline" onClick={() => updateBorrow(b.id, "returned")}>Return</Button>
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => updateBorrow(b.id, "overdue")}>Overdue</Button>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      {borrows.length === 0 && <p className="text-center text-muted-foreground py-8">No borrows for your books yet.</p>}
+    </div>
+  );
+}
+
+function PublisherRatingsTab() {
+  const { user } = useAuth();
+
+  const { data: reviewsData = [] } = useQuery({
+    queryKey: ["publisher-ratings", user?.id],
+    queryFn: async () => {
+      const { data: books } = await supabase.from("books").select("id, title").eq("publisher_id", user!.id);
+      if (!books || books.length === 0) return [];
+      const bookIds = books.map(b => b.id);
+      const { data: reviews } = await supabase
+        .from("book_reviews")
+        .select("*, profiles(display_name)")
+        .in("book_id", bookIds)
+        .order("created_at", { ascending: false });
+      
+      return (reviews || []).map((r: any) => ({
+        ...r,
+        bookTitle: books.find(b => b.id === r.book_id)?.title || "Unknown",
+      }));
+    },
+  });
+
+  const avgRating = reviewsData.length > 0
+    ? (reviewsData.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsData.length).toFixed(1)
+    : "—";
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-heading text-xl font-semibold">Reviews & Ratings ({reviewsData.length})</h2>
+        <div className="flex items-center gap-2">
+          <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+          <span className="font-heading text-xl font-bold">{avgRating}</span>
+          <span className="text-sm text-muted-foreground">avg rating</span>
+        </div>
+      </div>
       <div className="space-y-3">
-        {borrows.map((b: any) => (
-          <Card key={b.id}>
+        {reviewsData.map((r: any) => (
+          <Card key={r.id}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="font-semibold">{b.books?.title}</p>
-                  <p className="text-sm text-muted-foreground">{(b.profiles as any)?.display_name} · {format(new Date(b.created_at), "MMM d, yyyy")}</p>
-                  {b.user_message && <p className="text-xs text-muted-foreground italic mt-1">"{b.user_message}"</p>}
+                  <p className="font-semibold">{r.bookTitle}</p>
+                  <p className="text-sm text-muted-foreground">{(r.profiles as any)?.display_name || "Anonymous"} · {format(new Date(r.created_at), "MMM d, yyyy")}</p>
                 </div>
-                <Badge variant={
-                  b.status === "returned" ? "secondary" : 
-                  b.status === "overdue" || b.status === "rejected" ? "destructive" : 
-                  b.status === "pending" ? "outline" : "default"
-                }>{b.status}</Badge>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className={`h-4 w-4 ${i < r.rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30"}`} />
+                  ))}
+                </div>
               </div>
-              {b.status === "pending" && (
-                <div className="flex items-center gap-2 mt-2">
-                  {approveId === b.id ? (
-                    <>
-                      <Input type="number" min="1" value={borrowDays} onChange={(e) => setBorrowDays(e.target.value)} className="w-20 h-8 text-xs" placeholder="Days" />
-                      <span className="text-xs text-muted-foreground">days</span>
-                      <Button size="sm" onClick={() => approveBorrow(b.id)}>Confirm</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setApproveId(null)}>Cancel</Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="sm" onClick={() => setApproveId(b.id)}>Approve</Button>
-                      <Button size="sm" variant="destructive" onClick={() => rejectBorrow(b.id)}>Reject</Button>
-                    </>
-                  )}
-                </div>
-              )}
-              {b.status === "borrowed" && (
-                <div className="flex gap-2 mt-2">
-                  <Button size="sm" variant="outline" onClick={() => updateBorrow(b.id, "returned")}>Return</Button>
-                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => updateBorrow(b.id, "overdue")}>Overdue</Button>
-                </div>
-              )}
+              {r.review_text && <p className="text-sm text-foreground">{r.review_text}</p>}
             </CardContent>
           </Card>
         ))}
-        {borrows.length === 0 && <p className="text-center text-muted-foreground py-8">No borrows yet.</p>}
+        {reviewsData.length === 0 && <p className="text-center text-muted-foreground py-8">No reviews for your books yet.</p>}
       </div>
     </div>
   );
@@ -508,7 +616,6 @@ function PublisherRevenueTab() {
         .select("total_amount, created_at, status, order_items(books(publisher_id))")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      // Filter orders that contain books belonging to this publisher
       return data.filter((o: any) => o.order_items?.some((i: any) => (i.books as any)?.publisher_id === user?.id));
     },
   });
@@ -530,7 +637,6 @@ function PublisherRevenueTab() {
     .reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
 
   const totalBorrowRevenue = borrows.reduce((sum: number, b: any) => sum + Number((b.books as any)?.borrow_price || 0), 0);
-
   const totalRevenue = totalOrderRevenue + totalBorrowRevenue;
 
   const monthlyData: Record<string, { month: string; sales: number; borrows: number }> = {};

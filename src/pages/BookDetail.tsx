@@ -158,8 +158,10 @@ export default function BookDetail() {
             ) : (
               <Button size="lg" onClick={() => navigate("/auth")}>Sign in to Purchase</Button>
             )}
-          </div>
         </div>
+
+        {/* Comments Section */}
+        <BookComments bookId={id!} />
       </div>
 
       {/* Borrow Dialog with Policy */}

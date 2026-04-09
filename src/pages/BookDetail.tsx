@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import BookComments from "@/components/BookComments";
 import { ShoppingCart, BookOpen, ArrowLeft, Heart } from "lucide-react";
 
 export default function BookDetail() {
@@ -159,6 +160,9 @@ export default function BookDetail() {
             )}
           </div>
         </div>
+
+        {/* Comments Section */}
+        <BookComments bookId={id!} />
       </div>
 
       {/* Borrow Dialog with Policy */}

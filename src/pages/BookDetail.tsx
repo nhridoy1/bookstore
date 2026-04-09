@@ -158,6 +158,7 @@ export default function BookDetail() {
             ) : (
               <Button size="lg" onClick={() => navigate("/auth")}>Sign in to Purchase</Button>
             )}
+          </div>
         </div>
 
         {/* Comments Section */}

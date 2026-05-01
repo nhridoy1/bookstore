@@ -162,6 +162,9 @@ export default function BookDetail() {
           </div>
         </div>
 
+        {/* Reviews & Ratings */}
+        <BookReviews bookId={id!} />
+
         {/* Comments Section */}
         <BookComments bookId={id!} />
       </div>

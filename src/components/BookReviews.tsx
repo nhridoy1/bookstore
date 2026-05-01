@@ -32,11 +32,21 @@ export default function BookReviews({ bookId }: { bookId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("book_reviews")
-        .select("*, profiles(display_name, avatar_url)")
+        .select("*")
         .eq("book_id", bookId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as Review[];
+      const rows = (data || []) as Omit<Review, "profiles">[];
+      const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
+      let profileMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url")
+          .in("user_id", userIds);
+        (profs || []).forEach((p: any) => profileMap.set(p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url }));
+      }
+      return rows.map((r) => ({ ...r, profiles: profileMap.get(r.user_id) || null })) as Review[];
     },
   });
 

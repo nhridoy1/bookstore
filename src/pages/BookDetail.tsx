@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BookComments from "@/components/BookComments";
+import BookReviews from "@/components/BookReviews";
 import { ShoppingCart, BookOpen, ArrowLeft, Heart } from "lucide-react";
 
 export default function BookDetail() {
@@ -160,6 +161,9 @@ export default function BookDetail() {
             )}
           </div>
         </div>
+
+        {/* Reviews & Ratings */}
+        <BookReviews bookId={id!} />
 
         {/* Comments Section */}
         <BookComments bookId={id!} />

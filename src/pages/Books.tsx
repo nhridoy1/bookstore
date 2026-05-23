@@ -138,6 +138,9 @@ export default function Books() {
               {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button asChild variant="outline" size="sm" className="gap-2 md:w-auto">
+            <Link to="/creators"><Users className="h-4 w-4" /> Find Author / Publisher</Link>
+          </Button>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Sort by" /></SelectTrigger>
             <SelectContent>

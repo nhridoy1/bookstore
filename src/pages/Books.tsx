@@ -109,6 +109,35 @@ export default function Books() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search books..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
           </div>
+        <h1 className="font-heading text-3xl font-bold mb-3">All Books</h1>
+
+        {(authorFilter || publisherFilter) && (
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">Filtered by:</span>
+            {authorFilter && (
+              <Badge variant="secondary" className="gap-1">
+                Author: {authorFilter}
+                <button onClick={() => { searchParams.delete("author"); setSearchParams(searchParams); }}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {publisherFilter && (
+              <Badge variant="secondary" className="gap-1">
+                Publisher: {publisherProfile?.display_name || "…"}
+                <button onClick={() => { searchParams.delete("publisher"); setSearchParams(searchParams); }}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-center mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search books..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          </div>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Category" /></SelectTrigger>
             <SelectContent>

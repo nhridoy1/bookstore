@@ -34,11 +34,23 @@ export default function Books() {
     },
   });
 
+  // Lookup publisher name for badge
+  const { data: publisherProfile } = useQuery({
+    queryKey: ["publisher-profile", publisherFilter],
+    enabled: !!publisherFilter,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("display_name").eq("user_id", publisherFilter!).maybeSingle();
+      return data;
+    },
+  });
+
   const { data: books = [], isLoading } = useQuery({
-    queryKey: ["books", selectedCategory, search, priceRange],
+    queryKey: ["books", selectedCategory, search, priceRange, authorFilter, publisherFilter],
     queryFn: async () => {
       let query = supabase.from("books").select("*, categories(name)").order("created_at", { ascending: false });
       if (selectedCategory && selectedCategory !== "all") query = query.eq("category_id", selectedCategory);
+      if (authorFilter) query = query.eq("author", authorFilter);
+      if (publisherFilter) query = query.eq("publisher_id", publisherFilter);
       if (search) query = query.or(`title.ilike.%${search}%,author.ilike.%${search}%`);
       query = query.gte("price", priceRange[0]).lte("price", priceRange[1]);
       const { data, error } = await query;

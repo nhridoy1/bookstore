@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Package, BookOpen, TrendingUp, Upload, X, DollarSign, Star, Users } from "lucide-react";
 import { format } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import CommentAnalysis from "@/components/CommentAnalysis";
 
 export default function PublisherDashboard() {
   const { user, isPublisher, isAdmin, loading } = useAuth();
@@ -546,6 +547,15 @@ function PublisherBorrowsTab() {
 
 function PublisherRatingsTab() {
   const { user } = useAuth();
+  const [analyzeBookId, setAnalyzeBookId] = useState<string>("");
+
+  const { data: myBooks = [] } = useQuery({
+    queryKey: ["publisher-my-books-list", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("books").select("id, title").eq("publisher_id", user!.id).order("title");
+      return data || [];
+    },
+  });
 
   const { data: reviewsData = [] } = useQuery({
     queryKey: ["publisher-ratings", user?.id],
@@ -580,6 +590,22 @@ function PublisherRatingsTab() {
           <span className="text-sm text-muted-foreground">avg rating</span>
         </div>
       </div>
+
+      <div className="mb-6 rounded-lg border p-4 bg-card">
+        <Label className="mb-2 block">AI Analyze Feedback for a Book</Label>
+        <div className="flex gap-2 mb-3">
+          <Select value={analyzeBookId} onValueChange={setAnalyzeBookId}>
+            <SelectTrigger className="max-w-md"><SelectValue placeholder="Select one of your books" /></SelectTrigger>
+            <SelectContent>
+              {myBooks.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        {analyzeBookId && (
+          <CommentAnalysis bookId={analyzeBookId} bookTitle={myBooks.find((b: any) => b.id === analyzeBookId)?.title} />
+        )}
+      </div>
+
       <div className="space-y-3">
         {reviewsData.map((r: any) => (
           <Card key={r.id}>

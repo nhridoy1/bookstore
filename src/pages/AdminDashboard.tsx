@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Package, BookOpen, FolderTree, Users, BarChart3, ShieldCheck, UserCog, UserPlus, CreditCard, Banknote, Upload, X, Image, DollarSign, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import CommentAnalysis from "@/components/CommentAnalysis";
+import { Sparkles } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading } = useAuth();
@@ -112,6 +114,7 @@ function AdminBooksTab() {
   const [open, setOpen] = useState(false);
   const [editBook, setEditBook] = useState<any>(null);
   const [search, setSearch] = useState("");
+  const [analyzeBook, setAnalyzeBook] = useState<any>(null);
 
   const { data: books = [] } = useQuery({
     queryKey: ["admin-books"],
@@ -195,6 +198,7 @@ function AdminBooksTab() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" title="AI feedback analysis" onClick={() => setAnalyzeBook(book)}><Sparkles className="h-4 w-4 text-primary" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => { setEditBook(book); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(book.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </TableCell>
@@ -204,6 +208,13 @@ function AdminBooksTab() {
         </Table>
       </div>
       {filteredBooks.length === 0 && <p className="text-center text-muted-foreground py-8">No books found.</p>}
+
+      <Dialog open={!!analyzeBook} onOpenChange={(o) => !o && setAnalyzeBook(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle className="font-heading flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> AI Feedback Analysis</DialogTitle></DialogHeader>
+          {analyzeBook && <CommentAnalysis bookId={analyzeBook.id} bookTitle={analyzeBook.title} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -102,13 +102,6 @@ export default function Books() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <div className="container mx-auto px-4 py-8 flex-1">
-        <h1 className="font-heading text-3xl font-bold mb-8">All Books</h1>
-
-        <div className="flex flex-col gap-4 md:flex-row md:items-center mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search books..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-          </div>
         <h1 className="font-heading text-3xl font-bold mb-3">All Books</h1>
 
         {(authorFilter || publisherFilter) && (

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import BookCard from "@/components/BookCard";
 import Navbar from "@/components/Navbar";
@@ -7,14 +7,17 @@ import Footer from "@/components/Footer";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { useState, useMemo } from "react";
-import { Search, SlidersHorizontal, Star } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, SlidersHorizontal, Star, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function Books() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const categoryFilter = searchParams.get("category");
+  const authorFilter = searchParams.get("author");
+  const publisherFilter = searchParams.get("publisher");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(categoryFilter || "all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
@@ -31,11 +34,23 @@ export default function Books() {
     },
   });
 
+  // Lookup publisher name for badge
+  const { data: publisherProfile } = useQuery({
+    queryKey: ["publisher-profile", publisherFilter],
+    enabled: !!publisherFilter,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("display_name").eq("user_id", publisherFilter!).maybeSingle();
+      return data;
+    },
+  });
+
   const { data: books = [], isLoading } = useQuery({
-    queryKey: ["books", selectedCategory, search, priceRange],
+    queryKey: ["books", selectedCategory, search, priceRange, authorFilter, publisherFilter],
     queryFn: async () => {
       let query = supabase.from("books").select("*, categories(name)").order("created_at", { ascending: false });
       if (selectedCategory && selectedCategory !== "all") query = query.eq("category_id", selectedCategory);
+      if (authorFilter) query = query.eq("author", authorFilter);
+      if (publisherFilter) query = query.eq("publisher_id", publisherFilter);
       if (search) query = query.or(`title.ilike.%${search}%,author.ilike.%${search}%`);
       query = query.gte("price", priceRange[0]).lte("price", priceRange[1]);
       const { data, error } = await query;
@@ -87,7 +102,29 @@ export default function Books() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <div className="container mx-auto px-4 py-8 flex-1">
-        <h1 className="font-heading text-3xl font-bold mb-8">All Books</h1>
+        <h1 className="font-heading text-3xl font-bold mb-3">All Books</h1>
+
+        {(authorFilter || publisherFilter) && (
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">Filtered by:</span>
+            {authorFilter && (
+              <Badge variant="secondary" className="gap-1">
+                Author: {authorFilter}
+                <button onClick={() => { searchParams.delete("author"); setSearchParams(searchParams); }}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {publisherFilter && (
+              <Badge variant="secondary" className="gap-1">
+                Publisher: {publisherProfile?.display_name || "…"}
+                <button onClick={() => { searchParams.delete("publisher"); setSearchParams(searchParams); }}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-4 md:flex-row md:items-center mb-4">
           <div className="relative flex-1">
@@ -101,6 +138,9 @@ export default function Books() {
               {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button asChild variant="outline" size="sm" className="gap-2 md:w-auto">
+            <Link to="/creators"><Users className="h-4 w-4" /> Find Author / Publisher</Link>
+          </Button>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Sort by" /></SelectTrigger>
             <SelectContent>

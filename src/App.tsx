@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import Books from "./pages/Books";
 import BookDetail from "./pages/BookDetail";
 import Categories from "./pages/Categories";
+import Creators from "./pages/Creators";
 import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import Borrows from "./pages/Borrows";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/books" element={<Books />} />
               <Route path="/books/:id" element={<BookDetail />} />
               <Route path="/categories" element={<Categories />} />
+              <Route path="/creators" element={<Creators />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/borrows" element={<Borrows />} />

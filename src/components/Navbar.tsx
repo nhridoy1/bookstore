@@ -45,6 +45,7 @@ export default function Navbar() {
           <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Home</Link>
           <Link to="/books" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Books</Link>
           <Link to="/categories" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Categories</Link>
+          <Link to="/creators" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Authors & Publishers</Link>
         </div>
 
         <div className="hidden items-center gap-3 md:flex">

@@ -161,9 +161,12 @@ export default function Index() {
 
       {/* Latest Books */}
       {latestBooks.length > 0 && (
-        <section className="container mx-auto px-4 py-16">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="font-heading text-3xl font-bold">New Arrivals</h2>
+        <section className="container mx-auto px-4 py-20">
+          <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
+            <div>
+              <p className="text-sm uppercase tracking-[0.2em] text-primary font-medium mb-2">Just in</p>
+              <h2 className="font-heading text-4xl md:text-5xl font-bold">New Arrivals</h2>
+            </div>
             <Button variant="ghost" asChild><Link to="/books">View All <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
           </div>
           <div className="grid gap-6 grid-cols-2 md:grid-cols-4">

@@ -15,6 +15,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BookComments from "@/components/BookComments";
 import BookReviews from "@/components/BookReviews";
+import OtherEditions from "@/components/OtherEditions";
 import { ShoppingCart, BookOpen, ArrowLeft, Heart } from "lucide-react";
 
 export default function BookDetail() {
@@ -161,6 +162,9 @@ export default function BookDetail() {
             )}
           </div>
         </div>
+
+        {/* Other Editions / Publishers */}
+        <OtherEditions bookId={book.id} title={book.title} author={book.author} currentPublisherId={book.publisher_id} />
 
         {/* Reviews & Ratings */}
         <BookReviews bookId={id!} />

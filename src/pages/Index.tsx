@@ -102,18 +102,42 @@ export default function Index() {
         </section>
       )}
 
-      {/* Categories */}
+      {/* Categories — editorial warm treatment */}
       {categories.length > 0 && (
-        <section className="bg-card py-16">
+        <section className="relative py-20" style={{ background: "linear-gradient(180deg, hsl(var(--secondary)) 0%, hsl(var(--background)) 100%)" }}>
           <div className="container mx-auto px-4">
-            <h2 className="font-heading text-3xl font-bold mb-8 text-center">Browse by Category</h2>
+            <div className="flex items-end justify-between flex-wrap gap-4 mb-10">
+              <div>
+                <p className="text-sm uppercase tracking-[0.2em] text-primary font-medium mb-2">Explore</p>
+                <h2 className="font-heading text-4xl md:text-5xl font-bold">Browse by Category</h2>
+              </div>
+              <Button variant="ghost" asChild>
+                <Link to="/categories">All Categories <ArrowRight className="ml-1 h-4 w-4" /></Link>
+              </Button>
+            </div>
             <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-              {categories.map((cat) => (
-                <Link key={cat.id} to={`/books?category=${cat.id}`} className="rounded-lg border bg-background p-6 text-center hover:shadow-book transition-all hover:-translate-y-1">
-                  <h3 className="font-heading font-semibold">{cat.name}</h3>
-                  {cat.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{cat.description}</p>}
-                </Link>
-              ))}
+              {categories.map((cat, idx) => {
+                const isAccent = idx === 0 || idx === 4;
+                return (
+                  <Link
+                    key={cat.id}
+                    to={`/books?category=${cat.id}`}
+                    className={`group relative overflow-hidden rounded-xl border p-5 transition-all hover:-translate-y-1 hover:shadow-book ${
+                      isAccent
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-card-foreground border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <BookOpen className={`h-5 w-5 mb-3 ${isAccent ? "text-primary-foreground/80" : "text-primary"}`} />
+                    <h3 className="font-heading font-semibold">{cat.name}</h3>
+                    {cat.description && (
+                      <p className={`text-xs mt-1 line-clamp-2 ${isAccent ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
+                        {cat.description}
+                      </p>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>

@@ -6,7 +6,7 @@ import BookCard from "@/components/BookCard";
 import BookRecommendations from "@/components/BookRecommendations";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import heroImage from "@/assets/hero-bookstore.jpg";
+import AnimatedHero from "@/components/AnimatedHero";
 import { ArrowRight, BookOpen, Truck, CreditCard, Sparkles } from "lucide-react";
 
 export default function Index() {
@@ -50,9 +50,8 @@ export default function Index() {
       <Navbar />
 
       {/* Hero */}
-      <section className="relative h-[75vh] min-h-[520px] overflow-hidden">
-        <img src={heroImage} alt="BookStore hero" className="absolute inset-0 h-full w-full object-cover" width={1920} height={1080} />
-        <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
+      <section className="relative h-[80vh] min-h-[560px] overflow-hidden">
+        <AnimatedHero />
         <div className="relative container mx-auto flex h-full flex-col items-start justify-center px-4 max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1 mb-5 backdrop-blur-sm animate-fade-in">
             <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />

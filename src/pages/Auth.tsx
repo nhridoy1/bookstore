@@ -79,7 +79,7 @@ export default function Auth() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <BookOpen className="mx-auto h-10 w-10 text-primary mb-2" />
-            <CardTitle className="font-heading text-2xl">Welcome to BookStore</CardTitle>
+            <CardTitle className="font-heading text-2xl">Welcome to BookJunky</CardTitle>
             <CardDescription>Sign in to buy, borrow, and manage books</CardDescription>
           </CardHeader>
           <CardContent>

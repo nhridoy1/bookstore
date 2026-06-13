@@ -51,7 +51,7 @@ export default function Login() {
           <CardHeader className="text-center">
             <BookOpen className="mx-auto h-10 w-10 text-primary mb-2" />
             <CardTitle className="font-heading text-2xl">Welcome Back</CardTitle>
-            <CardDescription>Login to your BookStore account</CardDescription>
+            <CardDescription>Login to your BookJunky account</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>

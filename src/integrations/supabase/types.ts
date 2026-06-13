@@ -23,6 +23,9 @@ export type Database = {
           created_at: string
           desired_days: number | null
           due_date: string
+          fine_amount: number | null
+          fine_note: string | null
+          fine_sent_at: string | null
           id: string
           return_date: string | null
           status: string
@@ -38,6 +41,9 @@ export type Database = {
           created_at?: string
           desired_days?: number | null
           due_date?: string
+          fine_amount?: number | null
+          fine_note?: string | null
+          fine_sent_at?: string | null
           id?: string
           return_date?: string | null
           status?: string
@@ -53,6 +59,9 @@ export type Database = {
           created_at?: string
           desired_days?: number | null
           due_date?: string
+          fine_amount?: number | null
+          fine_note?: string | null
+          fine_sent_at?: string | null
           id?: string
           return_date?: string | null
           status?: string

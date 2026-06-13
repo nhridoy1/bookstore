@@ -1,5 +1,5 @@
-import { BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function Footer() {
   return (
@@ -7,10 +7,7 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-8">
         <div className="grid gap-8 md:grid-cols-3">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <BookOpen className="h-5 w-5 text-primary" />
-              <span className="font-heading text-lg font-bold">BookStore</span>
-            </div>
+            <div className="mb-3"><BrandLogo /></div>
             <p className="text-sm text-muted-foreground">Your one-stop destination for books. Buy, borrow, and explore thousands of titles.</p>
           </div>
           <div>
@@ -29,7 +26,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="mt-8 border-t pt-4 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} BookStore. All rights reserved.
+          © {new Date().getFullYear()} BookJunky. All rights reserved.
         </div>
       </div>
     </footer>

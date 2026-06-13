@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: `BookStore Order #${(order_id as string).slice(0, 8)}` },
+            product_data: { name: `BookJunky Order #${(order_id as string).slice(0, 8)}` },
             unit_amount: Math.round(amount * 100),
           },
           quantity: 1,

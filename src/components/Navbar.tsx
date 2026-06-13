@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, User, LogOut, BookOpen, LayoutDashboard, Menu, X, Shield, Settings, Package, Library, Heart } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 import NotificationBell from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,9 +37,8 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <BookOpen className="h-6 w-6 text-primary" />
-          <span className="font-heading text-xl font-bold text-foreground">BookStore</span>
+        <Link to="/" className="flex items-center">
+          <BrandLogo />
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">

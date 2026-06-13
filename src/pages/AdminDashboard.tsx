@@ -571,6 +571,10 @@ function AdminBorrowsTab() {
   const queryClient = useQueryClient();
   const [approveId, setApproveId] = useState<string | null>(null);
   const [borrowDays, setBorrowDays] = useState("14");
+  const [fineBorrow, setFineBorrow] = useState<any>(null);
+  const [fineAmount, setFineAmount] = useState("");
+  const [fineMessage, setFineMessage] = useState("");
+  const [sendingFine, setSendingFine] = useState(false);
 
   const { data: borrows = [] } = useQuery({
     queryKey: ["admin-borrows"],
@@ -709,6 +713,17 @@ function AdminBorrowsTab() {
                       <Button size="sm" variant="ghost" className="text-destructive" onClick={() => updateBorrow(b.id, "overdue")}>Overdue</Button>
                     </div>
                   )}
+                  {b.status === "overdue" && (
+                    <div className="flex gap-1 justify-end items-center">
+                      {(b as any).fine_amount > 0 && (
+                        <Badge variant="destructive" className="text-xs">Fine ${(b as any).fine_amount}</Badge>
+                      )}
+                      <Button size="sm" variant="destructive" onClick={() => { setFineBorrow(b); setFineAmount(String((b as any).fine_amount || "")); setFineMessage(""); }}>
+                        <DollarSign className="h-3 w-3 mr-1" />Send Fine
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => updateBorrow(b.id, "returned")}>Mark Returned</Button>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -716,6 +731,60 @@ function AdminBorrowsTab() {
         </Table>
       </div>
       {borrows.length === 0 && <p className="text-center text-muted-foreground py-8">No borrows yet.</p>}
+
+      <Dialog open={!!fineBorrow} onOpenChange={(o) => { if (!o) setFineBorrow(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="font-heading flex items-center gap-2"><DollarSign className="h-5 w-5 text-destructive" /> Send Overdue Fine</DialogTitle></DialogHeader>
+          {fineBorrow && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const amt = parseFloat(fineAmount);
+                if (!amt || amt <= 0) { toast({ title: "Enter a valid fine amount", variant: "destructive" }); return; }
+                setSendingFine(true);
+                try {
+                  const { error } = await supabase.from("book_borrows").update({
+                    fine_amount: amt,
+                    fine_note: fineMessage || null,
+                    fine_sent_at: new Date().toISOString(),
+                  } as any).eq("id", fineBorrow.id);
+                  if (error) throw error;
+                  await supabase.from("notifications").insert({
+                    user_id: fineBorrow.user_id,
+                    title: `Overdue fine: $${amt.toFixed(2)}`,
+                    message: `You have an overdue fine of $${amt.toFixed(2)} for "${fineBorrow.books?.title}".${fineMessage ? ` Note: ${fineMessage}` : ""}`,
+                    type: "fine",
+                  } as any);
+                  queryClient.invalidateQueries({ queryKey: ["admin-borrows"] });
+                  toast({ title: "Fine sent", description: `User notified with $${amt.toFixed(2)} fine.` });
+                  setFineBorrow(null);
+                } catch (err: any) {
+                  toast({ title: "Error", description: err.message, variant: "destructive" });
+                } finally {
+                  setSendingFine(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div className="text-sm text-muted-foreground">
+                <p><span className="font-medium text-foreground">{fineBorrow.books?.title}</span></p>
+                <p>Borrower: {(fineBorrow.profiles as any)?.display_name || "Unknown"}</p>
+              </div>
+              <div>
+                <Label>Fine Amount ($)</Label>
+                <Input type="number" step="0.01" min="0.01" value={fineAmount} onChange={(e) => setFineAmount(e.target.value)} required />
+              </div>
+              <div>
+                <Label>Message to user (optional)</Label>
+                <Textarea value={fineMessage} onChange={(e) => setFineMessage(e.target.value)} placeholder="Please return the book at your earliest convenience." rows={3} />
+              </div>
+              <Button type="submit" variant="destructive" className="w-full" disabled={sendingFine}>
+                {sendingFine ? "Sending..." : "Send Fine & Notify User"}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

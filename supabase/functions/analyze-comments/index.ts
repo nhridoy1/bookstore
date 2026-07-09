@@ -103,17 +103,35 @@ Deno.serve(async (req) => {
     const data = await aiRes.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     const parsed = args ? JSON.parse(args) : {};
-    const total = (parsed.positive || 0) + (parsed.neutral || 0) + (parsed.negative || 0);
+    const actualTotal = items.length;
+    let p = Math.max(0, parseInt(parsed.positive) || 0);
+    let n = Math.max(0, parseInt(parsed.neutral) || 0);
+    let g = Math.max(0, parseInt(parsed.negative) || 0);
+    const aiSum = p + n + g;
+
+    // Normalize AI counts to match the actual number of items analyzed
+    if (aiSum === 0) {
+      n = actualTotal;
+    } else if (aiSum !== actualTotal) {
+      // Proportionally rescale
+      const scaled = [p, n, g].map((v) => (v * actualTotal) / aiSum);
+      const rounded = scaled.map((v) => Math.floor(v));
+      let diff = actualTotal - rounded.reduce((a, b) => a + b, 0);
+      // Distribute leftover to largest fractional parts
+      const fracs = scaled.map((v, i) => ({ i, f: v - Math.floor(v) })).sort((a, b) => b.f - a.f);
+      for (let k = 0; k < diff; k++) rounded[fracs[k % 3].i]++;
+      [p, n, g] = rounded;
+    }
 
     return new Response(
       JSON.stringify({
-        total: total || items.length,
-        positive: parsed.positive || 0,
-        neutral: parsed.neutral || 0,
-        negative: parsed.negative || 0,
+        total: actualTotal,
+        positive: p,
+        neutral: n,
+        negative: g,
         summary: parsed.summary || "",
         highlights: parsed.highlights || [],
-        analyzed: items.length,
+        analyzed: actualTotal,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

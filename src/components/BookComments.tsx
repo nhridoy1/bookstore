@@ -16,7 +16,7 @@ interface Comment {
   parent_id: string | null;
   content: string;
   created_at: string;
-  profiles?: { display_name: string | null; avatar_url: string | null } | null;
+  profile?: { display_name: string | null; avatar_url: string | null } | null;
   replies?: Comment[];
 }
 
@@ -31,16 +31,27 @@ export default function BookComments({ bookId }: { bookId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("book_comments")
-        .select("*, profiles(display_name, avatar_url)")
+        .select("*")
         .eq("book_id", bookId)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      
+
+      const rows = (data || []) as any[];
+      const userIds = Array.from(new Set(rows.map((r) => r.user_id))).filter(Boolean);
+      let profilesMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url")
+          .in("user_id", userIds);
+        (profs || []).forEach((p: any) => profilesMap.set(p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url }));
+      }
+
       // Build tree
       const map = new Map<string, Comment>();
       const roots: Comment[] = [];
-      (data || []).forEach((c: any) => {
-        map.set(c.id, { ...c, replies: [] });
+      rows.forEach((c: any) => {
+        map.set(c.id, { ...c, profile: profilesMap.get(c.user_id) || null, replies: [] });
       });
       map.forEach((c) => {
         if (c.parent_id && map.has(c.parent_id)) {
@@ -55,9 +66,10 @@ export default function BookComments({ bookId }: { bookId: string }) {
 
   const postMutation = useMutation({
     mutationFn: async ({ content, parentId }: { content: string; parentId?: string }) => {
+      if (!user) throw new Error("Please sign in to comment.");
       const { error } = await supabase.from("book_comments").insert({
         book_id: bookId,
-        user_id: user!.id,
+        user_id: user.id,
         content,
         parent_id: parentId || null,
       } as any);
@@ -66,6 +78,7 @@ export default function BookComments({ bookId }: { bookId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-comments", bookId] });
       setNewComment("");
+      toast({ title: "Comment posted" });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -92,7 +105,7 @@ export default function BookComments({ bookId }: { bookId: string }) {
         <h2 className="font-heading text-xl font-bold">Comments ({totalComments})</h2>
       </div>
 
-      {user && (
+      {user ? (
         <div className="mb-6">
           <Textarea
             value={newComment}
@@ -109,6 +122,8 @@ export default function BookComments({ bookId }: { bookId: string }) {
             {postMutation.isPending ? "Posting..." : "Post Comment"}
           </Button>
         </div>
+      ) : (
+        <p className="mb-6 text-sm text-muted-foreground">Sign in to post a comment.</p>
       )}
 
       <div className="space-y-4">
@@ -159,7 +174,7 @@ function CommentItem({
   const [showReplies, setShowReplies] = useState(true);
 
   const canDelete = user && (user.id === comment.user_id || isAdmin || isPublisher);
-  const profile = comment.profiles;
+  const profile = comment.profile;
   const displayName = profile?.display_name || "Anonymous";
 
   return (

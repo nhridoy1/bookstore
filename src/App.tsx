@@ -21,6 +21,8 @@ import PublisherDashboard from "./pages/PublisherDashboard";
 import Wishlist from "./pages/Wishlist";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import BorrowPolicy from "./pages/BorrowPolicy";
+import RefundPolicy from "./pages/RefundPolicy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +53,8 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/publisher" element={<PublisherDashboard />} />
+              <Route path="/policies/borrow" element={<BorrowPolicy />} />
+              <Route path="/policies/refund" element={<RefundPolicy />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>

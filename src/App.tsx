@@ -53,6 +53,8 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/publisher" element={<PublisherDashboard />} />
+              <Route path="/policies/borrow" element={<BorrowPolicy />} />
+              <Route path="/policies/refund" element={<RefundPolicy />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>

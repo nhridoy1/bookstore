@@ -36,25 +36,37 @@ Deno.serve(async (req) => {
       if (book?.publisher_id !== userData.user.id) throw new Error("Forbidden");
     }
 
-    const [reviewsRes, commentsRes] = await Promise.all([
-      supabase.from("book_reviews").select("rating, review_text").eq("book_id", book_id),
-      supabase.from("book_comments").select("content").eq("book_id", book_id),
-    ]);
+    const { data: reviews = [], error: reviewsError } = await supabase
+      .from("book_reviews")
+      .select("rating, review_text")
+      .eq("book_id", book_id);
+    if (reviewsError) throw reviewsError;
 
-    const reviews = reviewsRes.data || [];
-    const comments = commentsRes.data || [];
-    const items: string[] = [
-      ...reviews.filter((r: any) => r.review_text).map((r: any) => `[Review ${r.rating}/5] ${r.review_text}`),
-      ...comments.map((c: any) => `[Comment] ${c.content}`),
-    ];
+    const items: string[] = reviews.map((r: any, index: number) => {
+      const text = typeof r.review_text === "string" && r.review_text.trim().length > 0
+        ? r.review_text.trim()
+        : "No written review.";
+      return `[Review ${index + 1} · Rating ${r.rating}/5] ${text}`;
+    });
+    const ratingSentiment = reviews.reduce(
+      (acc: { positive: number; neutral: number; negative: number }, review: any) => {
+        const rating = Number(review.rating) || 0;
+        if (rating >= 4) acc.positive += 1;
+        else if (rating <= 2) acc.negative += 1;
+        else acc.neutral += 1;
+        return acc;
+      },
+      { positive: 0, neutral: 0, negative: 0 }
+    );
 
     if (items.length === 0) {
       return new Response(
-        JSON.stringify({ total: 0, positive: 0, neutral: 0, negative: 0, summary: "No feedback yet for this book.", highlights: [] }),
+        JSON.stringify({ total: 0, positive: 0, neutral: 0, negative: 0, summary: "No reviews yet for this book.", highlights: [] }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    const actualTotal = reviews.length;
     const sample = items.slice(0, 80).join("\n---\n");
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -63,8 +75,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You analyze book feedback sentiment. Always return data via the provided tool." },
-          { role: "user", content: `Analyze the following ${items.length} feedback entries (reviews & comments) for one book. Classify each as positive, neutral, or negative, then summarize.\n\n${sample}` },
+          { role: "system", content: "You summarize book review sentiment themes. Always return data via the provided tool. Counts are calculated separately from review ratings, so focus on an accurate summary and highlights." },
+          { role: "user", content: `Summarize exactly ${actualTotal} book reviews for one book. Do not include comments or invent additional reviews.\n\n${sample}` },
         ],
         tools: [{
           type: "function",
@@ -74,9 +86,9 @@ Deno.serve(async (req) => {
             parameters: {
               type: "object",
               properties: {
-                positive: { type: "integer", description: "Count of positive entries" },
-                neutral: { type: "integer", description: "Count of neutral entries" },
-                negative: { type: "integer", description: "Count of negative entries" },
+                positive: { type: "integer", description: "Count of positive reviews" },
+                neutral: { type: "integer", description: "Count of neutral reviews" },
+                negative: { type: "integer", description: "Count of negative reviews" },
                 summary: { type: "string", description: "2-3 sentence overall summary in plain English" },
                 highlights: {
                   type: "array",
@@ -103,10 +115,12 @@ Deno.serve(async (req) => {
     const data = await aiRes.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     const parsed = args ? JSON.parse(args) : {};
-    const actualTotal = items.length;
-    let p = Math.max(0, parseInt(parsed.positive) || 0);
-    let n = Math.max(0, parseInt(parsed.neutral) || 0);
-    let g = Math.max(0, parseInt(parsed.negative) || 0);
+    let p = ratingSentiment.positive;
+    let n = ratingSentiment.neutral;
+    let g = ratingSentiment.negative;
+    p = Math.min(p, actualTotal);
+    n = Math.min(n, actualTotal);
+    g = Math.min(g, actualTotal);
     const aiSum = p + n + g;
 
     // Normalize AI counts to match the actual number of items analyzed

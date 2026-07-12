@@ -44,7 +44,7 @@ export default function CommentAnalysis({ bookId, bookTitle }: { bookId: string;
         <div className="flex items-center justify-between">
           <div>
             <p className="font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> AI Sentiment Analysis
+              <Sparkles className="h-4 w-4 text-primary" /> AI Review Analysis
             </p>
             {bookTitle && <p className="text-xs text-muted-foreground">{bookTitle}</p>}
           </div>
@@ -83,7 +83,7 @@ export default function CommentAnalysis({ bookId, bookTitle }: { bookId: string;
               </div>
             )}
             {result.total === 0 && (
-              <p className="text-xs text-muted-foreground text-center">No feedback yet to analyze.</p>
+              <p className="text-xs text-muted-foreground text-center">No reviews yet to analyze.</p>
             )}
           </>
         )}

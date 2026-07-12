@@ -48,6 +48,16 @@ Deno.serve(async (req) => {
         : "No written review.";
       return `[Review ${index + 1} · Rating ${r.rating}/5] ${text}`;
     });
+    const ratingSentiment = reviews.reduce(
+      (acc: { positive: number; neutral: number; negative: number }, review: any) => {
+        const rating = Number(review.rating) || 0;
+        if (rating >= 4) acc.positive += 1;
+        else if (rating <= 2) acc.negative += 1;
+        else acc.neutral += 1;
+        return acc;
+      },
+      { positive: 0, neutral: 0, negative: 0 }
+    );
 
     if (items.length === 0) {
       return new Response(
@@ -65,8 +75,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You analyze book review sentiment. Always return data via the provided tool. The positive, neutral, and negative counts must add up exactly to the number of reviews provided." },
-          { role: "user", content: `Analyze exactly ${actualTotal} book reviews for one book. Classify each review as positive, neutral, or negative, then summarize. Do not include comments or invent additional reviews. The three counts must total ${actualTotal}.\n\n${sample}` },
+          { role: "system", content: "You summarize book review sentiment themes. Always return data via the provided tool. Counts are calculated separately from review ratings, so focus on an accurate summary and highlights." },
+          { role: "user", content: `Summarize exactly ${actualTotal} book reviews for one book. Do not include comments or invent additional reviews.\n\n${sample}` },
         ],
         tools: [{
           type: "function",
@@ -105,9 +115,9 @@ Deno.serve(async (req) => {
     const data = await aiRes.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     const parsed = args ? JSON.parse(args) : {};
-    let p = Math.max(0, parseInt(parsed.positive) || 0);
-    let n = Math.max(0, parseInt(parsed.neutral) || 0);
-    let g = Math.max(0, parseInt(parsed.negative) || 0);
+    let p = ratingSentiment.positive;
+    let n = ratingSentiment.neutral;
+    let g = ratingSentiment.negative;
     p = Math.min(p, actualTotal);
     n = Math.min(n, actualTotal);
     g = Math.min(g, actualTotal);

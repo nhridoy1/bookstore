@@ -325,7 +325,7 @@ function BookForm({ book, categories, onClose, queryKey }: { book: any; categori
       
       {/* Image Upload */}
       <div>
-        <Label>Cover Image</Label>
+        <Label>Cover Image <span className="text-muted-foreground font-normal">(optional)</span></Label>
         <div
           className={`mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
             dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"

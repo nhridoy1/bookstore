@@ -8,6 +8,8 @@ import { Sparkles, ThumbsUp, ThumbsDown, Minus, Loader2 } from "lucide-react";
 
 interface Result {
   total: number;
+  reviews: number;
+  comments: number;
   positive: number;
   neutral: number;
   negative: number;
@@ -26,7 +28,16 @@ export default function CommentAnalysis({ bookId, bookTitle }: { bookId: string;
     setResult(null);
     try {
       const { data, error } = await supabase.functions.invoke("analyze-comments", { body: { book_id: bookId } });
-      if (error) throw error;
+      if (error) {
+        let message = error.message;
+        if ("context" in error && error.context instanceof Response) {
+          const responseBody: unknown = await error.context.clone().json().catch(() => null);
+          if (responseBody && typeof responseBody === "object" && "error" in responseBody && typeof responseBody.error === "string") {
+            message = responseBody.error;
+          }
+        }
+        throw new Error(message);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       setResult(data as Result);
     } catch (e: any) {
@@ -44,7 +55,7 @@ export default function CommentAnalysis({ bookId, bookTitle }: { bookId: string;
         <div className="flex items-center justify-between">
           <div>
             <p className="font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> AI Review Analysis
+              <Sparkles className="h-4 w-4 text-primary" /> AI Feedback Analysis
             </p>
             {bookTitle && <p className="text-xs text-muted-foreground">{bookTitle}</p>}
           </div>
@@ -55,6 +66,9 @@ export default function CommentAnalysis({ bookId, bookTitle }: { bookId: string;
 
         {result && (
           <>
+            <p className="text-xs text-muted-foreground">
+              {result.total} feedback items · {result.reviews} {result.reviews === 1 ? "review" : "reviews"} · {result.comments} {result.comments === 1 ? "comment" : "comments"}
+            </p>
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded border p-2 text-center bg-green-500/10">
                 <ThumbsUp className="h-4 w-4 mx-auto text-green-600 mb-1" />
@@ -83,7 +97,7 @@ export default function CommentAnalysis({ bookId, bookTitle }: { bookId: string;
               </div>
             )}
             {result.total === 0 && (
-              <p className="text-xs text-muted-foreground text-center">No reviews yet to analyze.</p>
+              <p className="text-xs text-muted-foreground text-center">No reviews or comments yet to analyze.</p>
             )}
           </>
         )}
